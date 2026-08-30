@@ -133,18 +133,18 @@ POPUP_LIFE`. Llamar a `spawnPopup` en la rotura y a `updatePopups` desde `update
 
 ## Criterios de aceptación
 
-- [ ] Cada bloque roto reproduce `assets/sounds/break-sound.mp3`.
-- [ ] Dos roturas separadas por menos de 150 ms se oyen solapadas, sin que la segunda corte a la primera.
-- [ ] Tras el primer lanzamiento de bola, romper bloques no genera errores de autoplay en la consola.
-- [ ] Al romper un bloque aparecen entre 8 y 12 fragmentos del color de ese bloque.
-- [ ] Los fragmentos aceleran hacia abajo (gravedad) y se desvanecen hasta desaparecer en ~500 ms.
-- [ ] El número total de partículas vivas nunca supera `PARTICLE_MAX`.
-- [ ] Cada bloque roto muestra un destello blanco de ~100 ms encajado en su rectángulo.
-- [ ] Sobre cada bloque roto aparece "+10" que sube ~28 px y se desvanece en ~600 ms.
-- [ ] La animación de sprite de 4 frames (`EXPLOSION_FRAMES` / `EXPLOSION_DURATION`) sigue reproduciéndose en cada rotura.
-- [ ] Al reiniciar desde Game Over o Victoria no queda ninguna partícula, popup ni destello del intento anterior.
-- [ ] No se añaden dependencias: sin npm, sin paso de build, sin `<script src>` a CDNs.
-- [ ] `specs/01-mvp-arkanoid.md` referencia a este spec para el detalle de la rotura.
+- [x] Cada bloque roto reproduce `assets/sounds/break-sound.mp3`.
+- [x] Dos roturas separadas por menos de 150 ms se oyen solapadas, sin que la segunda corte a la primera.
+- [x] Tras el primer lanzamiento de bola, romper bloques no genera errores de autoplay en la consola.
+- [x] Al romper un bloque aparecen entre 8 y 12 fragmentos del color de ese bloque.
+- [x] Los fragmentos aceleran hacia abajo (gravedad) y se desvanecen hasta desaparecer en ~500 ms.
+- [x] El número total de partículas vivas nunca supera `PARTICLE_MAX`.
+- [x] Cada bloque roto muestra un destello blanco de ~100 ms encajado en su rectángulo.
+- [x] Sobre cada bloque roto aparece "+10" que sube ~28 px y se desvanece en ~600 ms.
+- [x] La animación de sprite de 4 frames (`EXPLOSION_FRAMES` / `EXPLOSION_DURATION`) sigue reproduciéndose en cada rotura.
+- [x] Al reiniciar desde Game Over o Victoria no queda ninguna partícula, popup ni destello del intento anterior.
+- [x] No se añaden dependencias: sin npm, sin paso de build, sin `<script src>` a CDNs.
+- [x] `specs/01-mvp-arkanoid.md` referencia a este spec para el detalle de la rotura.
 
 ---
 

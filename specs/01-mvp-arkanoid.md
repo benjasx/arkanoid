@@ -97,19 +97,19 @@ Convenciones:
 
 ## Criterios de aceptación
 
-- [ ] Servida la carpeta y abierto `index.html`, aparece un canvas de 800x600 centrado y sin errores en la consola.
-- [ ] El paddle sigue la X del ratón y también se mueve con las flechas ←/→, y nunca sale del área de juego.
-- [ ] Al cargar la página la bola está pegada al paddle y se mueve con él.
-- [ ] Un click en el canvas o la tecla Espacio lanza la bola hacia arriba.
-- [ ] La bola rebota en las paredes izquierda, derecha y superior y no las atraviesa.
-- [ ] El nivel muestra 50 bloques en una rejilla de 10x5 con un color distinto por fila.
-- [ ] Al golpear un bloque, este desaparece, se reproduce una animación de rotura de 4 frames y la bola cambia de dirección.
-- [ ] El ángulo de rebote en el paddle depende del punto de impacto; la rapidez de la bola es constante durante toda la partida.
-- [ ] Si la bola cae por debajo del borde inferior se pierde una vida, el HUD `Vidas: N` se actualiza y la bola vuelve a quedar pegada al paddle.
-- [ ] Con 0 vidas aparece la pantalla de Game Over.
-- [ ] Al eliminar los 50 bloques aparece la pantalla de victoria.
-- [ ] Desde Game Over o victoria, pulsar una tecla o hacer click reinicia la partida con 3 vidas y el nivel completo.
-- [ ] No hay dependencias externas: sin npm, sin paso de build, sin `<script src>` a CDNs; solo `assets/spritesheet.js` y `game.js`.
+- [x] Servida la carpeta y abierto `index.html`, aparece un canvas de 800x600 centrado y sin errores en la consola.
+- [x] El paddle sigue la X del ratón y también se mueve con las flechas ←/→, y nunca sale del área de juego.
+- [x] Al cargar la página la bola está pegada al paddle y se mueve con él.
+- [x] Un click en el canvas o la tecla Espacio lanza la bola hacia arriba.
+- [x] La bola rebota en las paredes izquierda, derecha y superior y no las atraviesa.
+- [x] El nivel muestra 50 bloques en una rejilla de 10x5 con un color distinto por fila.
+- [x] Al golpear un bloque, este desaparece, se reproduce una animación de rotura de 4 frames y la bola cambia de dirección.
+- [x] El ángulo de rebote en el paddle depende del punto de impacto; la rapidez de la bola es constante durante toda la partida.
+- [x] Si la bola cae por debajo del borde inferior se pierde una vida, el HUD `Vidas: N` se actualiza y la bola vuelve a quedar pegada al paddle.
+- [x] Con 0 vidas aparece la pantalla de Game Over.
+- [x] Al eliminar los 50 bloques aparece la pantalla de victoria.
+- [x] Desde Game Over o victoria, pulsar una tecla o hacer click reinicia la partida con 3 vidas y el nivel completo.
+- [x] No hay dependencias externas: sin npm, sin paso de build, sin `<script src>` a CDNs; solo `assets/spritesheet.js` y `game.js`.
 
 ---
 
