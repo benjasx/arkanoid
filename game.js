@@ -5,7 +5,9 @@ const CANVAS_H = 600;
 const BG_COLOR = "#0a0a12";
 
 const PADDLE = { w: 96, h: 16, y: 560, speed: 480 }; // speed en px/s (solo teclado)
-const BALL = { size: 14, speed: 360 }; // speed en px/s, constante
+const BALL = { size: 14, speed: 360 }; // speed en px/s, valor base
+const STAGE_SPEED_STEP = 0.08; // +8% de rapidez de bola por stage
+const STAGE_SPEED_CAP = 1.6; // multiplicador maximo sobre BALL.speed
 const MAX_LAUNCH_ANGLE = 50 * Math.PI / 180; // desde la vertical
 const MAX_BOUNCE_ANGLE = 60 * Math.PI / 180; // rebote en el paddle, desde la vertical
 
@@ -65,6 +67,7 @@ function buildBricks( stage ) {
 const state = {
   phase: "playing", // 'playing' | 'gameover' | 'stageclear'
   stage: 1,
+  ballSpeed: BALL.speed, // rapidez efectiva actual de la bola
   lives: START_LIVES,
   score: 0,
   ballStuck: true,
@@ -136,12 +139,16 @@ function stickBallToPaddle() {
   state.ball.vy = 0;
 }
 
+function stageBallSpeed() {
+  return BALL.speed * Math.min( 1 + STAGE_SPEED_STEP * ( state.stage - 1 ), STAGE_SPEED_CAP );
+}
+
 function launchBall() {
   if ( !state.ballStuck ) return;
   state.ballStuck = false;
   const angle = ( Math.random() * 2 - 1 ) * MAX_LAUNCH_ANGLE;
-  state.ball.vx = BALL.speed * Math.sin( angle );
-  state.ball.vy = -BALL.speed * Math.cos( angle );
+  state.ball.vx = state.ballSpeed * Math.sin( angle );
+  state.ball.vy = -state.ballSpeed * Math.cos( angle );
 }
 
 function updateBall( dt ) {
@@ -187,8 +194,8 @@ function collideBallPaddle() {
 
   const offset = clamp( ( b.x - ( p.x + p.w / 2 ) ) / ( p.w / 2 ), -1, 1 );
   const angle = offset * MAX_BOUNCE_ANGLE;
-  b.vx = BALL.speed * Math.sin( angle );
-  b.vy = -BALL.speed * Math.cos( angle );
+  b.vx = state.ballSpeed * Math.sin( angle );
+  b.vy = -state.ballSpeed * Math.cos( angle );
   b.y = p.y - b.r;
   playBounceSfx();
 }
@@ -275,6 +282,7 @@ function updatePopups( dt ) {
 function advanceStage() {
   state.stage++;
   state.bricks = buildBricks( state.stage );
+  state.ballSpeed = stageBallSpeed();
   state.ballStuck = true;
   state.phase = "playing";
   stickBallToPaddle();
@@ -283,6 +291,7 @@ function advanceStage() {
 function resetGame() {
   state.phase = "playing";
   state.stage = 1;
+  state.ballSpeed = BALL.speed;
   state.lives = START_LIVES;
   state.score = 0;
   state.ballStuck = true;
