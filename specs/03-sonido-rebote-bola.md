@@ -87,14 +87,14 @@ espacios dentro de `( )` y `[ ]`, `const`/`let`).
 
 ## Criterios de aceptación
 
-- [ ] Cada rebote de la bola en la pared izquierda, derecha o superior reproduce `assets/sounds/ball-bounce.mp3`.
-- [ ] Cada rebote de la bola en el paddle reproduce `assets/sounds/ball-bounce.mp3`.
-- [ ] Un rebote de la bola contra un bloque **no** reproduce `ball-bounce.mp3`; la rotura del bloque sigue sonando solo con `break-sound.mp3`.
-- [ ] Cuando la bola cae por debajo del borde inferior (pérdida de vida) no se reproduce ningún sonido.
-- [ ] Dos rebotes muy seguidos (p. ej. bola encajada en una esquina) se oyen sin que la consola registre errores de audio.
-- [ ] Tras el primer lanzamiento, ningún rebote genera errores de autoplay en la consola.
-- [ ] No se añaden dependencias: sin npm, sin paso de build, sin `<script src>` a CDNs.
-- [ ] `specs/02-efectos-rotura-bloques.md` referencia a este spec para el sonido de rebote.
+- [x] Cada rebote de la bola en la pared izquierda, derecha o superior reproduce `assets/sounds/ball-bounce.mp3`.
+- [x] Cada rebote de la bola en el paddle reproduce `assets/sounds/ball-bounce.mp3`.
+- [x] Un rebote de la bola contra un bloque **no** reproduce `ball-bounce.mp3`; la rotura del bloque sigue sonando solo con `break-sound.mp3`.
+- [x] Cuando la bola cae por debajo del borde inferior (pérdida de vida) no se reproduce ningún sonido.
+- [x] Dos rebotes muy seguidos (p. ej. bola encajada en una esquina) se oyen sin que la consola registre errores de audio.
+- [x] Tras el primer lanzamiento, ningún rebote genera errores de autoplay en la consola.
+- [x] No se añaden dependencias: sin npm, sin paso de build, sin `<script src>` a CDNs.
+- [x] `specs/02-efectos-rotura-bloques.md` referencia a este spec para el sonido de rebote.
 
 ---
 

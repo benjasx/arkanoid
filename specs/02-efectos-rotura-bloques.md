@@ -34,7 +34,7 @@ flotantes. La animación de 4 frames se mantiene tal cual; todo lo demás se sum
 
 **Fuera (para specs futuros):**
 
-- Sonido de rebote de pared y paddle (`assets/sounds/ball-bounce.mp3`).
+- Sonido de rebote de pared y paddle (`assets/sounds/ball-bounce.mp3`) — implementado en SPEC 03.
 - Screen shake / sacudida del canvas.
 - Bloques con resistencia de varios golpes o estado de daño.
 - Partículas construidas a partir de recortes del spritesheet.
@@ -177,7 +177,7 @@ POPUP_LIFE`. Llamar a `spawnPopup` en la rotura y a `updatePopups` desde `update
 
 ## Lo que **no** entra en este spec
 
-- Sonido de rebote de pared y paddle (`ball-bounce.mp3`).
+- Sonido de rebote de pared y paddle (`ball-bounce.mp3`) — implementado en SPEC 03.
 - Screen shake.
 - Bloques con resistencia de varios golpes.
 - Partículas a partir de recortes del spritesheet.
