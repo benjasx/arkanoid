@@ -1,6 +1,6 @@
 # SPEC 03 — Sonido de rebote de la bola
 
-> **Estado:** aprobado
+> **Estado:** implementado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-08-30
 > **Objetivo:** Reproducir `assets/sounds/ball-bounce.mp3` cada vez que la bola rebota en una pared (izquierda, derecha o superior) o en el paddle, sin tocar el sonido de rotura de bloques.
