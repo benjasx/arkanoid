@@ -1,6 +1,6 @@
 # SPEC 04 — Niveles infinitos con dificultad progresiva
 
-> **Estado:** Borrador
+> **Estado:** aprobado
 > **Depende de:** SPEC 01, SPEC 02
 > **Fecha:** 2026-08-30
 > **Objetivo:** Sustituir la pantalla de Victoria de SPEC 01 por una progresión infinita de stages en la que, al limpiar cada rejilla, la siguiente tiene más filas de bloques, más bloques que aguantan varios golpes y la bola algo más rápida. Además, cada 10 bloques destruidos en toda la partida se activa una multibola que suma 4 bolas al stage.
@@ -114,7 +114,7 @@ const MULTIBALL_SPREAD = 0.5; // rad de abanico al repartir la dirección de las
 state.stage = 1;
 state.ballSpeed = BALL.speed; // rapidez efectiva actual de la bola
 state.phase = "playing"; // 'playing' | 'stageclear' | 'gameover'   (ya no existe 'win')
-state.balls = [ ball ]; // SPEC 01 pasa de state.ball única a este array
+state.balls = [ball]; // SPEC 01 pasa de state.ball única a este array
 state.bricksDestroyed = 0; // bloques con hp === 0 en toda la partida
 
 // brick (buildBricks): se añaden hp y maxHp
@@ -289,16 +289,16 @@ Convenciones: mismo estilo que `assets/spritesheet.js` (2 espacios, espacios den
 
 ## Riesgos
 
-| Riesgo                                                                                      | Mitigación                                                                                                          |
-| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Con la bola más rápida en stages altos puede atravesar un bloque o pared (tunneling)      | `STAGE_SPEED_CAP = 1.6` mantiene el paso por frame acotado; si aparece, subdividir el desplazamiento del frame (mismo riesgo ya anotado en SPEC 01). |
-| Un bloque blindado en la fila inferior con la bola lenta genera rebotes largos y aburridos | `armorChance` capado a 0.6 y `ballSpeed` creciente reducen la situación; ningún bloque es indestructible.          |
-| Quitar la fase `"win"` deja referencias colgando (`state.phase === "win"` en `render()`)   | Paso 1 obliga a sustituir todos los usos; el criterio de aceptación comprueba que no hay estado de victoria.       |
-| El frame de `EXPLOSION_FRAMES` como grieta puede tapar demasiado el color del bloque       | Usar el índice más bajo para el primer daño (`idx = maxHp - hp - 1`); si molesta, dibujarlo con `globalAlpha < 1`. |
-| Muchas filas + muchos bloques blindados podrían bajar los FPS por el doble `draw` por brick | El doble dibujo solo ocurre en bloques dañados (`hp < maxHp`), que son minoría; `MAX_ROWS` acota el total.         |
-| Sin tope de bolas, un stage con muchos bloques puede acumular decenas de bolas y bajar los FPS | El reset a una sola bola al cambiar de stage acota el máximo por stage (~bloques del stage / 10 × 4); si molesta, subdividir el bucle de colisión o poner un tope en otro spec. |
-| Muchas bolas rápidas en stages altos agravan el tunneling | Mismo `STAGE_SPEED_CAP` y misma mitigación de subdividir el desplazamiento por frame; el número de bolas no cambia la rapidez individual. |
-| Convertir `state.ball` en `state.balls` toca todas las funciones de colisión y render de SPEC 01 | El paso 5 enumera las funciones afectadas; los criterios de aceptación de SPEC 01 (rebotes, pegado al paddle, pérdida de vida) sirven de regresión. |
+| Riesgo                                                                                           | Mitigación                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Con la bola más rápida en stages altos puede atravesar un bloque o pared (tunneling)             | `STAGE_SPEED_CAP = 1.6` mantiene el paso por frame acotado; si aparece, subdividir el desplazamiento del frame (mismo riesgo ya anotado en SPEC 01).                            |
+| Un bloque blindado en la fila inferior con la bola lenta genera rebotes largos y aburridos       | `armorChance` capado a 0.6 y `ballSpeed` creciente reducen la situación; ningún bloque es indestructible.                                                                       |
+| Quitar la fase `"win"` deja referencias colgando (`state.phase === "win"` en `render()`)         | Paso 1 obliga a sustituir todos los usos; el criterio de aceptación comprueba que no hay estado de victoria.                                                                    |
+| El frame de `EXPLOSION_FRAMES` como grieta puede tapar demasiado el color del bloque             | Usar el índice más bajo para el primer daño (`idx = maxHp - hp - 1`); si molesta, dibujarlo con `globalAlpha < 1`.                                                              |
+| Muchas filas + muchos bloques blindados podrían bajar los FPS por el doble `draw` por brick      | El doble dibujo solo ocurre en bloques dañados (`hp < maxHp`), que son minoría; `MAX_ROWS` acota el total.                                                                      |
+| Sin tope de bolas, un stage con muchos bloques puede acumular decenas de bolas y bajar los FPS   | El reset a una sola bola al cambiar de stage acota el máximo por stage (~bloques del stage / 10 × 4); si molesta, subdividir el bucle de colisión o poner un tope en otro spec. |
+| Muchas bolas rápidas en stages altos agravan el tunneling                                        | Mismo `STAGE_SPEED_CAP` y misma mitigación de subdividir el desplazamiento por frame; el número de bolas no cambia la rapidez individual.                                       |
+| Convertir `state.ball` en `state.balls` toca todas las funciones de colisión y render de SPEC 01 | El paso 5 enumera las funciones afectadas; los criterios de aceptación de SPEC 01 (rebotes, pegado al paddle, pérdida de vida) sirven de regresión.                             |
 
 ---
 
