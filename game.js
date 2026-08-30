@@ -39,6 +39,7 @@ function buildBricks() {
 }
 
 const state = {
+  phase: "playing", // 'playing' | 'gameover' | 'win'
   lives: START_LIVES,
   ballStuck: true,
   paddle: { x: ( CANVAS_W - PADDLE.w ) / 2, y: PADDLE.y, w: PADDLE.w, h: PADDLE.h },
@@ -161,12 +162,29 @@ function collideBallBricks() {
   }
 }
 
+function resetGame() {
+  state.phase = "playing";
+  state.lives = START_LIVES;
+  state.ballStuck = true;
+  state.bricks = buildBricks();
+  state.paddle.x = ( CANVAS_W - PADDLE.w ) / 2;
+  stickBallToPaddle();
+}
+
 function update( dt ) {
+  if ( state.phase !== "playing" ) return;
+
   updatePaddle( dt );
   updateBall( dt );
   if ( !state.ballStuck ) {
     collideBallPaddle();
     collideBallBricks();
+  }
+
+  if ( state.lives <= 0 ) {
+    state.phase = "gameover";
+  } else if ( !state.bricks.some( br => br.alive ) ) {
+    state.phase = "win";
   }
 }
 
@@ -201,6 +219,19 @@ function render() {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText( "Vidas: " + state.lives, 12, 12 );
+
+  if ( state.phase !== "playing" ) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fillRect( 0, 0, CANVAS_W, CANVAS_H );
+
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "48px monospace";
+    ctx.fillText( state.phase === "win" ? "Victoria" : "Game Over", CANVAS_W / 2, CANVAS_H / 2 - 20 );
+    ctx.font = "20px monospace";
+    ctx.fillText( "Pulsa una tecla o haz click para reiniciar", CANVAS_W / 2, CANVAS_H / 2 + 30 );
+  }
 }
 
 let lastTime = 0;
@@ -221,10 +252,19 @@ canvas.addEventListener( "mousemove", ( e ) => {
 } );
 
 canvas.addEventListener( "click", () => {
+  if ( state.phase !== "playing" ) {
+    resetGame();
+    return;
+  }
   launchBall();
 } );
 
 window.addEventListener( "keydown", ( e ) => {
+  if ( state.phase !== "playing" ) {
+    e.preventDefault();
+    resetGame();
+    return;
+  }
   if ( e.code === "ArrowLeft" ) state.input.left = true;
   if ( e.code === "ArrowRight" ) state.input.right = true;
   if ( e.code === "Space" ) {
