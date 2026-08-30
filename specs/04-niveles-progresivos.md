@@ -1,6 +1,6 @@
 # SPEC 04 — Niveles infinitos con dificultad progresiva
 
-> **Estado:** aprobado
+> **Estado:** implementado
 > **Depende de:** SPEC 01, SPEC 02
 > **Fecha:** 2026-08-30
 > **Objetivo:** Sustituir la pantalla de Victoria de SPEC 01 por una progresión infinita de stages en la que, al limpiar cada rejilla, la siguiente tiene más filas de bloques, más bloques que aguantan varios golpes y la bola algo más rápida. Además, cada 10 bloques destruidos en toda la partida se activa una multibola que suma 4 bolas al stage.
