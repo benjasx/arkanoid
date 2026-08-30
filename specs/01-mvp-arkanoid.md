@@ -22,7 +22,7 @@
 - Al romper un bloque: desaparece, se reproduce la animación de rotura de 4 frames (`EXPLOSION_FRAMES` / `EXPLOSION_DURATION`) y la bola cambia de dirección. **El detalle de la rotura (sonido, partículas, destello y popup de puntos) queda sustituido por `specs/02-efectos-rotura-bloques.md`; aquí solo se mantiene la animación de 4 frames y el rebote.**
 - 3 vidas. Si la bola cae por debajo del borde inferior se pierde una vida y la bola vuelve a quedar pegada al paddle.
 - HUD de texto en el canvas: `Vidas: N`.
-- Pantalla de Game Over al llegar a 0 vidas. Pantalla de victoria al limpiar los 50 bloques.
+- Pantalla de Game Over al llegar a 0 vidas. Pantalla de victoria al limpiar los 50 bloques. **`specs/04-niveles-progresivos.md` sustituye la pantalla de victoria por el avance de stage: limpiar la rejilla ya no gana la partida, sino que carga un stage más difícil, y la única forma de terminar pasa a ser quedarse sin vidas.**
 - Desde Game Over o victoria, pulsar una tecla o hacer click reinicia la partida con 3 vidas y el nivel completo.
 
 **Fuera (para specs futuros):**
@@ -74,6 +74,8 @@ const state = {
 };
 ```
 
+> **`specs/04-niveles-progresivos.md`** sustituye `state.ball` por la colección `state.balls` ("una sola bola" es `state.balls.length === 1`), reemplaza el flag global `state.ballStuck` por `ball.stuck` en cada bola, y mueve la pérdida de vida al momento en que cae la **última** bola de `state.balls` (mientras quede alguna, no se resta vida). La fase `"win"` desaparece.
+
 Convenciones:
 
 - Origen de coordenadas arriba-izquierda.
@@ -91,7 +93,7 @@ Convenciones:
 5. **Colisión bola-bloque + rotura.** Detección AABB bola vs bloque vivo; al impactar: `alive = false`, marcar `breaking` con `breakStart = now`, reflejar la bola en el eje de menor penetración. Durante `EXPLOSION_DURATION` (150 ms) dibujar el frame correspondiente de `EXPLOSION_FRAMES[ color ]` con `drawFrame`. Resolver como máximo un bloque por frame. Verificar: golpear un bloque lo elimina, muestra la animación de 4 frames y la bola cambia de dirección. **Las capas de feedback añadidas sobre esta rotura (sonido, partículas, destello, popup de puntos) se especifican en `specs/02-efectos-rotura-bloques.md`.**
 6. **Rebote en el paddle con ángulo.** Colisión bola vs paddle; calcular offset normalizado `(-1..1)` del punto de impacto respecto al centro del paddle y mapearlo a un ángulo de salida (p. ej. hasta ±60° respecto a la vertical). Mantener la magnitud de velocidad en `BALL.speed` (constante). Verificar: impactos en los bordes del paddle abren el ángulo; impactos centrales devuelven la bola casi vertical; la rapidez no cambia en toda la partida.
 7. **Vidas + pérdida.** Si `ball.y - r > CANVAS_H`: `lives--`, volver a `ballStuck = true` y recolocar la bola sobre el paddle. Dibujar el HUD `Vidas: N` con `ctx.fillText`. Verificar: dejar caer la bola decrementa el HUD y la bola vuelve a quedar pegada al paddle.
-8. **Game Over + victoria + reinicio.** Si `lives === 0`: `phase = 'gameover'`. Si no queda ningún bloque vivo: `phase = 'win'`. En esas fases, congelar la simulación y dibujar un overlay con el texto correspondiente y "Pulsa una tecla o haz click para reiniciar". Un `keydown` o `click` en esas fases reinicia todo el estado (3 vidas, rejilla completa, bola pegada, `phase = 'playing'`). Verificar: ambas pantallas son alcanzables y el reinicio devuelve la partida al estado inicial.
+8. **Game Over + victoria + reinicio.** Si `lives === 0`: `phase = 'gameover'`. Si no queda ningún bloque vivo: `phase = 'win'`. En esas fases, congelar la simulación y dibujar un overlay con el texto correspondiente y "Pulsa una tecla o haz click para reiniciar". Un `keydown` o `click` en esas fases reinicia todo el estado (3 vidas, rejilla completa, bola pegada, `phase = 'playing'`). Verificar: ambas pantallas son alcanzables y el reinicio devuelve la partida al estado inicial. **`specs/04-niveles-progresivos.md` sustituye `phase = 'win'` por la fase `"stageclear"` y el avance a un stage más difícil; deja de existir un estado final de victoria.**
 
 ---
 

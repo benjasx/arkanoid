@@ -27,7 +27,10 @@ flotantes. La animación de 4 frames se mantiene tal cual; todo lo demás se sum
 - `state.flashes`: destello blanco del tamaño del bloque, alpha que decae a 0 en ~100 ms.
 - `state.popups`: texto `+10` que aparece sobre el bloque roto, sube y se desvanece en ~600 ms.
 - Disparo de las cuatro capas (sonido, partículas, destello, popup) desde el punto de rotura en
-  `collideBallBricks()`.
+  `collideBallBricks()`. **`specs/04-niveles-progresivos.md` añade un caso previo de golpe no
+  letal a un bloque blindado (`hp > 0` tras el impacto): solo sonido + destello, sin partículas,
+  popup ni score. El camino de rotura real (`hp === 0`) mantiene las cuatro capas y además
+  alimenta el contador `state.bricksDestroyed` que activa la multibola cada 10 bloques.**
 - Limpieza de los tres arrays nuevos en `resetGame()`.
 - Referencia cruzada en `specs/01-mvp-arkanoid.md` indicando que el detalle de rotura vive ahora
   en este spec.
