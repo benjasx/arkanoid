@@ -1,6 +1,6 @@
 # SPEC 02 — Efectos de rotura de bloques
 
-> **Estado:** aprobado
+> **Estado:** implementado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-08-30
 > **Objetivo:** Al romper un bloque, sumar a la animación de 4 frames existente un sonido de rotura, fragmentos con gravedad, un destello blanco y un popup flotante de "+10".
