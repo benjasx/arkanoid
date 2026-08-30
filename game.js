@@ -8,6 +8,10 @@ const PADDLE = { w: 96, h: 16, y: 560, speed: 480 }; // speed en px/s (solo tecl
 const BALL = { size: 14, speed: 360 }; // speed en px/s, valor base
 const STAGE_SPEED_STEP = 0.08; // +8% de rapidez de bola por stage
 const STAGE_SPEED_CAP = 1.6; // multiplicador maximo sobre BALL.speed
+
+const MULTIBALL_EVERY = 10; // bloques realmente rotos entre activaciones de multibola
+const MULTIBALL_ADD = 4; // bolas que se anaden en cada activacion
+const MULTIBALL_SPREAD = 0.5; // rad de abanico al repartir la direccion de las bolas nuevas
 const MAX_LAUNCH_ANGLE = 50 * Math.PI / 180; // desde la vertical
 const MAX_BOUNCE_ANGLE = 60 * Math.PI / 180; // rebote en el paddle, desde la vertical
 
@@ -75,15 +79,19 @@ function buildBricks( stage ) {
   return bricks;
 }
 
+function makeBall() {
+  return { x: 0, y: 0, vx: 0, vy: 0, r: BALL.size / 2, stuck: true };
+}
+
 const state = {
   phase: "playing", // 'playing' | 'gameover' | 'stageclear'
   stage: 1,
   ballSpeed: BALL.speed, // rapidez efectiva actual de la bola
   lives: START_LIVES,
   score: 0,
-  ballStuck: true,
+  bricksDestroyed: 0, // bloques con hp === 0 en toda la partida
   paddle: { x: ( CANVAS_W - PADDLE.w ) / 2, y: PADDLE.y, w: PADDLE.w, h: PADDLE.h },
-  ball: { x: 0, y: 0, vx: 0, vy: 0, r: BALL.size / 2 },
+  balls: [ makeBall() ], // SPEC 01 pasa de state.ball unica a este array
   bricks: buildBricks( 1 ),
   input: { left: false, right: false, mouseX: null },
   particles: [], // { x, y, vx, vy, size, color, born }
@@ -142,12 +150,13 @@ function updatePaddle( dt ) {
   p.x = clamp( p.x, 0, maxX );
 }
 
-function stickBallToPaddle() {
+function stickBallToPaddle( ball ) {
   const p = state.paddle;
-  state.ball.x = p.x + p.w / 2;
-  state.ball.y = p.y - state.ball.r;
-  state.ball.vx = 0;
-  state.ball.vy = 0;
+  ball.x = p.x + p.w / 2;
+  ball.y = p.y - ball.r;
+  ball.vx = 0;
+  ball.vy = 0;
+  ball.stuck = true;
 }
 
 function stageBallSpeed() {
@@ -155,24 +164,17 @@ function stageBallSpeed() {
 }
 
 function launchBall() {
-  if ( !state.ballStuck ) return;
-  state.ballStuck = false;
-  const angle = ( Math.random() * 2 - 1 ) * MAX_LAUNCH_ANGLE;
-  state.ball.vx = state.ballSpeed * Math.sin( angle );
-  state.ball.vy = -state.ballSpeed * Math.cos( angle );
+  for ( let i = 0; i < state.balls.length; i++ ) {
+    const b = state.balls[ i ];
+    if ( !b.stuck ) continue;
+    b.stuck = false;
+    const angle = ( Math.random() * 2 - 1 ) * MAX_LAUNCH_ANGLE;
+    b.vx = state.ballSpeed * Math.sin( angle );
+    b.vy = -state.ballSpeed * Math.cos( angle );
+  }
 }
 
-function updateBall( dt ) {
-  const b = state.ball;
-
-  if ( state.ballStuck ) {
-    stickBallToPaddle();
-    return;
-  }
-
-  b.x += b.vx * dt;
-  b.y += b.vy * dt;
-
+function collideBallWall( b ) {
   if ( b.x - b.r < 0 ) {
     b.x = b.r;
     b.vx = -b.vx;
@@ -188,16 +190,56 @@ function updateBall( dt ) {
     b.vy = -b.vy;
     playBounceSfx();
   }
+}
 
-  if ( b.y - b.r > CANVAS_H ) {
-    state.lives--;
-    state.ballStuck = true;
-    stickBallToPaddle();
+function updateBalls( dt ) {
+  for ( let i = 0; i < state.balls.length; i++ ) {
+    const b = state.balls[ i ];
+
+    if ( b.stuck ) {
+      stickBallToPaddle( b );
+      continue;
+    }
+
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    collideBallWall( b );
   }
 }
 
-function collideBallPaddle() {
-  const b = state.ball;
+function loseBallsOffscreen() {
+  for ( let i = state.balls.length - 1; i >= 0; i-- ) {
+    if ( state.balls[ i ].y - state.balls[ i ].r > CANVAS_H ) {
+      state.balls.splice( i, 1 );
+    }
+  }
+  if ( state.balls.length > 0 ) return;
+
+  state.lives--;
+  if ( state.lives > 0 ) {
+    state.balls.push( makeBall() );
+    stickBallToPaddle( state.balls[ 0 ] );
+  }
+}
+
+function spawnMultiball( ref ) {
+  if ( !ref ) return;
+  const baseAngle = Math.atan2( ref.vy, ref.vx );
+  for ( let i = 0; i < MULTIBALL_ADD; i++ ) {
+    const t = MULTIBALL_ADD === 1 ? 0 : ( i / ( MULTIBALL_ADD - 1 ) ) * 2 - 1; // [ -1, 1 ]
+    const angle = baseAngle + t * MULTIBALL_SPREAD;
+    state.balls.push( {
+      x: ref.x,
+      y: ref.y,
+      vx: state.ballSpeed * Math.cos( angle ),
+      vy: state.ballSpeed * Math.sin( angle ),
+      r: BALL.size / 2,
+      stuck: false,
+    } );
+  }
+}
+
+function collideBallPaddle( b ) {
   const p = state.paddle;
   if ( b.vy <= 0 ) return;
   if ( b.x + b.r <= p.x || b.x - b.r >= p.x + p.w ) return;
@@ -211,8 +253,7 @@ function collideBallPaddle() {
   playBounceSfx();
 }
 
-function collideBallBricks() {
-  const b = state.ball;
+function collideBallBricks( b ) {
   const left = b.x - b.r;
   const right = b.x + b.r;
   const top = b.y - b.r;
@@ -250,6 +291,10 @@ function collideBallBricks() {
     spawnFlash( br );
     spawnPopup( br );
     state.score += 10;
+    state.bricksDestroyed++;
+    if ( Math.floor( ( state.bricksDestroyed - 1 ) / MULTIBALL_EVERY ) !== Math.floor( state.bricksDestroyed / MULTIBALL_EVERY ) ) {
+      spawnMultiball( b );
+    }
     return; // resolver como maximo un bloque por frame
   }
 }
@@ -302,9 +347,9 @@ function advanceStage() {
   state.stage++;
   state.bricks = buildBricks( state.stage );
   state.ballSpeed = stageBallSpeed();
-  state.ballStuck = true;
+  state.balls = [ makeBall() ];
   state.phase = "playing";
-  stickBallToPaddle();
+  stickBallToPaddle( state.balls[ 0 ] );
 }
 
 function resetGame() {
@@ -313,24 +358,29 @@ function resetGame() {
   state.ballSpeed = BALL.speed;
   state.lives = START_LIVES;
   state.score = 0;
-  state.ballStuck = true;
+  state.bricksDestroyed = 0;
+  state.balls = [ makeBall() ];
   state.bricks = buildBricks( state.stage );
   state.particles.length = 0;
   state.popups.length = 0;
   state.flashes.length = 0;
   state.paddle.x = ( CANVAS_W - PADDLE.w ) / 2;
-  stickBallToPaddle();
+  stickBallToPaddle( state.balls[ 0 ] );
 }
 
 function update( dt ) {
   if ( state.phase !== "playing" ) return;
 
   updatePaddle( dt );
-  updateBall( dt );
-  if ( !state.ballStuck ) {
-    collideBallPaddle();
-    collideBallBricks();
+  updateBalls( dt );
+  const n = state.balls.length;
+  for ( let i = 0; i < n; i++ ) {
+    const b = state.balls[ i ];
+    if ( b.stuck ) continue;
+    collideBallPaddle( b );
+    collideBallBricks( b );
   }
+  loseBallsOffscreen();
   updateParticles( dt );
   updatePopups( dt );
 
@@ -402,8 +452,10 @@ function render() {
   const p = state.paddle;
   drawSprite( ctx, "paddle", p.x, p.y, p.w, p.h );
 
-  const b = state.ball;
-  drawSprite( ctx, "ball", b.x - b.r, b.y - b.r, BALL.size, BALL.size );
+  for ( let i = 0; i < state.balls.length; i++ ) {
+    const b = state.balls[ i ];
+    drawSprite( ctx, "ball", b.x - b.r, b.y - b.r, BALL.size, BALL.size );
+  }
 
   ctx.fillStyle = "#fff";
   ctx.font = "20px monospace";
