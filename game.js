@@ -185,6 +185,7 @@ function collideBallPaddle() {
   b.vx = BALL.speed * Math.sin( angle );
   b.vy = -BALL.speed * Math.cos( angle );
   b.y = p.y - b.r;
+  playBounceSfx();
 }
 
 function collideBallBricks() {
