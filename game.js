@@ -24,6 +24,16 @@ const START_LIVES = 3;
 const BREAK_SFX_SRC = "assets/sounds/break-sound.mp3";
 const BREAK_SFX_POOL_SIZE = 8;
 
+const PARTICLES_PER_BRICK = 10; // fragmentos por bloque roto
+const PARTICLE_MAX = 200; // tope global de particulas vivas
+const PARTICLE_LIFE = 500; // ms de vida
+const PARTICLE_GRAVITY = 900; // px/s^2 hacia abajo
+const PARTICLE_SIZE_MIN = 3; // px
+const PARTICLE_SIZE_MAX = 5; // px
+const PARTICLE_VX_MAX = 180; // px/s, rango [-max, +max]
+const PARTICLE_VY_MIN = -260; // px/s (hacia arriba)
+const PARTICLE_VY_MAX = -40; // px/s
+
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
 
@@ -50,6 +60,7 @@ const state = {
   ball: { x: 0, y: 0, vx: 0, vy: 0, r: BALL.size / 2 },
   bricks: buildBricks(),
   input: { left: false, right: false, mouseX: null },
+  particles: [], // { x, y, vx, vy, size, color, born }
 };
 
 // Pool de audio de rotura (fuera de state, no se resetea)
@@ -177,8 +188,39 @@ function collideBallBricks() {
     br.breaking = true;
     br.breakStart = now;
     playBreakSfx();
+    spawnParticles( br );
     state.score += 10;
     return; // resolver como maximo un bloque por frame
+  }
+}
+
+function spawnParticles( br ) {
+  if ( state.particles.length >= PARTICLE_MAX ) return;
+  const cx = br.x + br.w / 2;
+  const cy = br.y + br.h / 2;
+  for ( let i = 0; i < PARTICLES_PER_BRICK; i++ ) {
+    state.particles.push( {
+      x: cx,
+      y: cy,
+      vx: ( Math.random() * 2 - 1 ) * PARTICLE_VX_MAX,
+      vy: PARTICLE_VY_MIN + Math.random() * ( PARTICLE_VY_MAX - PARTICLE_VY_MIN ),
+      size: PARTICLE_SIZE_MIN + Math.random() * ( PARTICLE_SIZE_MAX - PARTICLE_SIZE_MIN ),
+      color: br.color,
+      born: now,
+    } );
+  }
+}
+
+function updateParticles( dt ) {
+  for ( let i = state.particles.length - 1; i >= 0; i-- ) {
+    const p = state.particles[ i ];
+    if ( now - p.born >= PARTICLE_LIFE ) {
+      state.particles.splice( i, 1 );
+      continue;
+    }
+    p.vy += PARTICLE_GRAVITY * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
   }
 }
 
@@ -201,6 +243,7 @@ function update( dt ) {
     collideBallPaddle();
     collideBallBricks();
   }
+  updateParticles( dt );
 
   if ( state.lives <= 0 ) {
     state.phase = "gameover";
@@ -228,6 +271,14 @@ function render() {
       }
     }
   }
+
+  for ( let i = 0; i < state.particles.length; i++ ) {
+    const pt = state.particles[ i ];
+    ctx.globalAlpha = clamp( 1 - ( now - pt.born ) / PARTICLE_LIFE, 0, 1 );
+    ctx.fillStyle = pt.color;
+    ctx.fillRect( pt.x, pt.y, pt.size, pt.size );
+  }
+  ctx.globalAlpha = 1;
 
   const p = state.paddle;
   drawSprite( ctx, "paddle", p.x, p.y, p.w, p.h );
