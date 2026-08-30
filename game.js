@@ -19,6 +19,7 @@ const GRID = {
   rowColors: [ "red", "hotpink", "magenta", "cyan", "yellow" ], // color por fila (indice 0 = fila superior)
 };
 const BRICK_H = 24; // alto de bloque (el spec no lo fija; el sprite es 32x16)
+const START_LIVES = 3;
 
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
@@ -38,6 +39,7 @@ function buildBricks() {
 }
 
 const state = {
+  lives: START_LIVES,
   ballStuck: true,
   paddle: { x: ( CANVAS_W - PADDLE.w ) / 2, y: PADDLE.y, w: PADDLE.w, h: PADDLE.h },
   ball: { x: 0, y: 0, vx: 0, vy: 0, r: BALL.size / 2 },
@@ -106,6 +108,12 @@ function updateBall( dt ) {
   if ( b.y - b.r < 0 ) {
     b.y = b.r;
     b.vy = -b.vy;
+  }
+
+  if ( b.y - b.r > CANVAS_H ) {
+    state.lives--;
+    state.ballStuck = true;
+    stickBallToPaddle();
   }
 }
 
@@ -187,6 +195,12 @@ function render() {
 
   const b = state.ball;
   drawSprite( ctx, "ball", b.x - b.r, b.y - b.r, BALL.size, BALL.size );
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "20px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText( "Vidas: " + state.lives, 12, 12 );
 }
 
 let lastTime = 0;
