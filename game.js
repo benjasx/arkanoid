@@ -9,7 +9,7 @@ const BALL = { size: 14, speed: 360 }; // speed en px/s, valor base
 const STAGE_SPEED_STEP = 0.08; // +8% de rapidez de bola por stage
 const STAGE_SPEED_CAP = 1.6; // multiplicador maximo sobre BALL.speed
 
-const MULTIBALL_EVERY = 10; // bloques realmente rotos entre activaciones de multibola
+const MULTIBALL_EVERY = 30; // bloques realmente rotos entre activaciones de multibola
 const MULTIBALL_ADD = 4; // bolas que se anaden en cada activacion
 const MULTIBALL_SPREAD = 0.5; // rad de abanico al repartir la direccion de las bolas nuevas
 const MAX_LAUNCH_ANGLE = 50 * Math.PI / 180; // desde la vertical
