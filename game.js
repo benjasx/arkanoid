@@ -24,6 +24,9 @@ const START_LIVES = 3;
 const BREAK_SFX_SRC = "assets/sounds/break-sound.mp3";
 const BREAK_SFX_POOL_SIZE = 8;
 
+const BOUNCE_SFX_SRC = "assets/sounds/ball-bounce.mp3";
+const BOUNCE_SFX_POOL_SIZE = 4;
+
 const PARTICLES_PER_BRICK = 10; // fragmentos por bloque roto
 const PARTICLE_MAX = 200; // tope global de particulas vivas
 const PARTICLE_LIFE = 500; // ms de vida
@@ -81,6 +84,20 @@ function playBreakSfx() {
   sfx.currentTime = 0;
   sfx.play().catch( () => {} );
   breakSfxIndex = ( breakSfxIndex + 1 ) % BREAK_SFX_POOL_SIZE;
+}
+
+// Pool de audio de rebote (fuera de state, no se resetea)
+const bounceSfxPool = [];
+let bounceSfxIndex = 0;
+for ( let i = 0; i < BOUNCE_SFX_POOL_SIZE; i++ ) {
+  bounceSfxPool.push( new Audio( BOUNCE_SFX_SRC ) );
+}
+
+function playBounceSfx() {
+  const sfx = bounceSfxPool[ bounceSfxIndex ];
+  sfx.currentTime = 0;
+  sfx.play().catch( () => {} );
+  bounceSfxIndex = ( bounceSfxIndex + 1 ) % BOUNCE_SFX_POOL_SIZE;
 }
 
 function clamp( v, min, max ) {
