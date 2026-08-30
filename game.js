@@ -21,6 +21,9 @@ const GRID = {
 const BRICK_H = 24; // alto de bloque (el spec no lo fija; el sprite es 32x16)
 const START_LIVES = 3;
 
+const BREAK_SFX_SRC = "assets/sounds/break-sound.mp3";
+const BREAK_SFX_POOL_SIZE = 8;
+
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
 
@@ -48,6 +51,20 @@ const state = {
   bricks: buildBricks(),
   input: { left: false, right: false, mouseX: null },
 };
+
+// Pool de audio de rotura (fuera de state, no se resetea)
+const breakSfxPool = [];
+let breakSfxIndex = 0;
+for ( let i = 0; i < BREAK_SFX_POOL_SIZE; i++ ) {
+  breakSfxPool.push( new Audio( BREAK_SFX_SRC ) );
+}
+
+function playBreakSfx() {
+  const sfx = breakSfxPool[ breakSfxIndex ];
+  sfx.currentTime = 0;
+  sfx.play().catch( () => {} );
+  breakSfxIndex = ( breakSfxIndex + 1 ) % BREAK_SFX_POOL_SIZE;
+}
 
 function clamp( v, min, max ) {
   return v < min ? min : ( v > max ? max : v );
@@ -159,6 +176,7 @@ function collideBallBricks() {
     br.alive = false;
     br.breaking = true;
     br.breakStart = now;
+    playBreakSfx();
     state.score += 10;
     return; // resolver como maximo un bloque por frame
   }
