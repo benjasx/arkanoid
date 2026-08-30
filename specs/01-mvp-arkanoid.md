@@ -1,6 +1,6 @@
 # SPEC 01 — MVP jugable de Arkanoid
 
-> **Estado:** Borrador
+> **Estado:** aprobado
 > **Depende de:** —
 > **Fecha:** 2026-08-30
 > **Objetivo:** Implementar un Arkanoid jugable de principio a fin (paddle, bola, un nivel de bloques, 3 vidas y pantallas de game over y victoria) en HTML/CSS/JS sin dependencias.
@@ -45,28 +45,28 @@ const CANVAS_W = 800;
 const CANVAS_H = 600;
 
 const PADDLE = { w: 96, h: 16, y: 560, speed: 480 }; // speed en px/s (solo teclado)
-const BALL   = { size: 14, speed: 360 };             // speed en px/s, constante
+const BALL = { size: 14, speed: 360 }; // speed en px/s, constante
 const START_LIVES = 3;
 
 // Rejilla de bloques del nivel fijo
 const GRID = {
   cols: 10,
   rows: 5,
-  marginX: 40,   // margen lateral dentro del canvas
-  top: 60,       // offset superior
+  marginX: 40, // margen lateral dentro del canvas
+  top: 60, // offset superior
   gapX: 8,
   gapY: 4,
-  rowColors: [ 'red', 'hotpink', 'magenta', 'cyan', 'yellow' ], // color por fila (índice 0 = fila superior)
+  rowColors: ["red", "hotpink", "magenta", "cyan", "yellow"], // color por fila (índice 0 = fila superior)
 };
 // Ancho de bloque derivado: (CANVAS_W - 2*marginX - (cols-1)*gapX) / cols
 
 // Estado en runtime (un objeto vivo, mutado por el bucle)
 const state = {
-  phase: 'playing',        // 'playing' | 'gameover' | 'win'
+  phase: "playing", // 'playing' | 'gameover' | 'win'
   lives: 3,
-  ballStuck: true,         // true = pegada al paddle esperando lanzamiento
+  ballStuck: true, // true = pegada al paddle esperando lanzamiento
   paddle: { x: 0, y: 560, w: 96, h: 16 },
-  ball:   { x: 0, y: 0, vx: 0, vy: 0, r: 7 },
+  ball: { x: 0, y: 0, vx: 0, vy: 0, r: 7 },
   bricks: [
     // { x, y, w, h, color, alive: true, breaking: false, breakStart: 0 }
   ],
@@ -137,12 +137,12 @@ Convenciones:
 
 ## Riesgos
 
-| Riesgo | Mitigación |
-| --- | --- |
+| Riesgo                                                                            | Mitigación                                                                                                    |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Tunneling: a paso grande por frame la bola podría atravesar un bloque o una pared | Velocidad moderada (`BALL.speed = 360`); si aparece, subdividir el desplazamiento del frame en pasos menores. |
-| Colisión simultánea con varios bloques en una esquina produce rebotes erráticos | Resolver como máximo un bloque por frame, eligiendo el de menor penetración. |
-| Abrir `index.html` con `file://` no carga `spritesheet-breakout.png` | Documentado en `CLAUDE.md`: servir la carpeta (`python -m http.server`) antes de jugar. |
-| El sprite del paddle (162x14) se dibuja escalado a 96x16 y puede verse deformado | Aceptable para el MVP; ajustar `PADDLE.w/h` a la proporción del sprite si molesta. |
+| Colisión simultánea con varios bloques en una esquina produce rebotes erráticos   | Resolver como máximo un bloque por frame, eligiendo el de menor penetración.                                  |
+| Abrir `index.html` con `file://` no carga `spritesheet-breakout.png`              | Documentado en `CLAUDE.md`: servir la carpeta (`python -m http.server`) antes de jugar.                       |
+| El sprite del paddle (162x14) se dibuja escalado a 96x16 y puede verse deformado  | Aceptable para el MVP; ajustar `PADDLE.w/h` a la proporción del sprite si molesta.                            |
 
 ---
 
