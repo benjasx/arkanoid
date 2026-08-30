@@ -1,6 +1,6 @@
 # SPEC 01 — MVP jugable de Arkanoid
 
-> **Estado:** aprobado
+> **Estado:** implementado
 > **Depende de:** —
 > **Fecha:** 2026-08-30
 > **Objetivo:** Implementar un Arkanoid jugable de principio a fin (paddle, bola, un nivel de bloques, 3 vidas y pantallas de game over y victoria) en HTML/CSS/JS sin dependencias.
