@@ -35,6 +35,8 @@ const PARTICLE_VY_MIN = -260; // px/s (hacia arriba)
 const PARTICLE_VY_MAX = -40; // px/s
 
 const FLASH_DURATION = 100; // ms
+const POPUP_LIFE = 600; // ms
+const POPUP_RISE = 28; // px que sube en toda su vida
 
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
@@ -64,6 +66,7 @@ const state = {
   input: { left: false, right: false, mouseX: null },
   particles: [], // { x, y, vx, vy, size, color, born }
   flashes: [], // { x, y, w, h, born }
+  popups: [], // { x, y, text, born }
 };
 
 // Pool de audio de rotura (fuera de state, no se resetea)
@@ -193,6 +196,7 @@ function collideBallBricks() {
     playBreakSfx();
     spawnParticles( br );
     spawnFlash( br );
+    spawnPopup( br );
     state.score += 10;
     return; // resolver como maximo un bloque por frame
   }
@@ -232,6 +236,16 @@ function spawnFlash( br ) {
   state.flashes.push( { x: br.x, y: br.y, w: br.w, h: br.h, born: now } );
 }
 
+function spawnPopup( br ) {
+  state.popups.push( { x: br.x + br.w / 2, y: br.y + br.h / 2, text: "+10", born: now } );
+}
+
+function updatePopups( dt ) {
+  for ( let i = state.popups.length - 1; i >= 0; i-- ) {
+    if ( now - state.popups[ i ].born >= POPUP_LIFE ) state.popups.splice( i, 1 );
+  }
+}
+
 function resetGame() {
   state.phase = "playing";
   state.lives = START_LIVES;
@@ -252,6 +266,7 @@ function update( dt ) {
     collideBallBricks();
   }
   updateParticles( dt );
+  updatePopups( dt );
 
   if ( state.lives <= 0 ) {
     state.phase = "gameover";
@@ -298,6 +313,18 @@ function render() {
     ctx.globalAlpha = 1 - age / FLASH_DURATION;
     ctx.fillStyle = "#fff";
     ctx.fillRect( fl.x, fl.y, fl.w, fl.h );
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "18px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for ( let i = 0; i < state.popups.length; i++ ) {
+    const pop = state.popups[ i ];
+    const age = now - pop.born;
+    ctx.globalAlpha = 1 - age / POPUP_LIFE;
+    ctx.fillText( pop.text, pop.x, pop.y - POPUP_RISE * ( age / POPUP_LIFE ) );
   }
   ctx.globalAlpha = 1;
 
