@@ -41,6 +41,7 @@ function buildBricks() {
 const state = {
   phase: "playing", // 'playing' | 'gameover' | 'win'
   lives: START_LIVES,
+  score: 0,
   ballStuck: true,
   paddle: { x: ( CANVAS_W - PADDLE.w ) / 2, y: PADDLE.y, w: PADDLE.w, h: PADDLE.h },
   ball: { x: 0, y: 0, vx: 0, vy: 0, r: BALL.size / 2 },
@@ -158,6 +159,7 @@ function collideBallBricks() {
     br.alive = false;
     br.breaking = true;
     br.breakStart = now;
+    state.score += 10;
     return; // resolver como maximo un bloque por frame
   }
 }
@@ -165,6 +167,7 @@ function collideBallBricks() {
 function resetGame() {
   state.phase = "playing";
   state.lives = START_LIVES;
+  state.score = 0;
   state.ballStuck = true;
   state.bricks = buildBricks();
   state.paddle.x = ( CANVAS_W - PADDLE.w ) / 2;
@@ -218,7 +221,18 @@ function render() {
   ctx.font = "20px monospace";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText( "Vidas: " + state.lives, 12, 12 );
+  const livesLabel = "Vidas: ";
+  ctx.fillText( livesLabel, 12, 12 );
+
+  const lifeIcon = 16;
+  const lifeGap = 6;
+  const lifeIconX = 12 + ctx.measureText( livesLabel ).width;
+  for ( let i = 0; i < state.lives; i++ ) {
+    drawSprite( ctx, "ball", lifeIconX + i * ( lifeIcon + lifeGap ), 12, lifeIcon, lifeIcon );
+  }
+
+  ctx.textAlign = "right";
+  ctx.fillText( "Score: " + state.score, CANVAS_W - 12, 12 );
 
   if ( state.phase !== "playing" ) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
