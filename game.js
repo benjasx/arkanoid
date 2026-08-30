@@ -8,13 +8,39 @@ const PADDLE = { w: 96, h: 16, y: 560, speed: 480 }; // speed en px/s (solo tecl
 const BALL = { size: 14, speed: 360 }; // speed en px/s, constante
 const MAX_LAUNCH_ANGLE = 50 * Math.PI / 180; // desde la vertical
 
+const GRID = {
+  cols: 10,
+  rows: 5,
+  marginX: 40, // margen lateral dentro del canvas
+  top: 60, // offset superior
+  gapX: 8,
+  gapY: 4,
+  rowColors: [ "red", "hotpink", "magenta", "cyan", "yellow" ], // color por fila (indice 0 = fila superior)
+};
+const BRICK_H = 24; // alto de bloque (el spec no lo fija; el sprite es 32x16)
+
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
+
+function buildBricks() {
+  const bw = ( CANVAS_W - 2 * GRID.marginX - ( GRID.cols - 1 ) * GRID.gapX ) / GRID.cols;
+  const bricks = [];
+  for ( let row = 0; row < GRID.rows; row++ ) {
+    const color = GRID.rowColors[ row ];
+    const y = GRID.top + row * ( BRICK_H + GRID.gapY );
+    for ( let col = 0; col < GRID.cols; col++ ) {
+      const x = GRID.marginX + col * ( bw + GRID.gapX );
+      bricks.push( { x, y, w: bw, h: BRICK_H, color, alive: true, breaking: false, breakStart: 0 } );
+    }
+  }
+  return bricks;
+}
 
 const state = {
   ballStuck: true,
   paddle: { x: ( CANVAS_W - PADDLE.w ) / 2, y: PADDLE.y, w: PADDLE.w, h: PADDLE.h },
   ball: { x: 0, y: 0, vx: 0, vy: 0, r: BALL.size / 2 },
+  bricks: buildBricks(),
   input: { left: false, right: false, mouseX: null },
 };
 
@@ -90,6 +116,12 @@ function update( dt ) {
 function render() {
   ctx.fillStyle = BG_COLOR;
   ctx.fillRect( 0, 0, CANVAS_W, CANVAS_H );
+
+  for ( let i = 0; i < state.bricks.length; i++ ) {
+    const br = state.bricks[ i ];
+    if ( !br.alive ) continue;
+    drawSprite( ctx, "block_" + br.color, br.x, br.y, br.w, br.h );
+  }
 
   const p = state.paddle;
   drawSprite( ctx, "paddle", p.x, p.y, p.w, p.h );
