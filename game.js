@@ -34,6 +34,8 @@ const PARTICLE_VX_MAX = 180; // px/s, rango [-max, +max]
 const PARTICLE_VY_MIN = -260; // px/s (hacia arriba)
 const PARTICLE_VY_MAX = -40; // px/s
 
+const FLASH_DURATION = 100; // ms
+
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
 
@@ -61,6 +63,7 @@ const state = {
   bricks: buildBricks(),
   input: { left: false, right: false, mouseX: null },
   particles: [], // { x, y, vx, vy, size, color, born }
+  flashes: [], // { x, y, w, h, born }
 };
 
 // Pool de audio de rotura (fuera de state, no se resetea)
@@ -189,6 +192,7 @@ function collideBallBricks() {
     br.breakStart = now;
     playBreakSfx();
     spawnParticles( br );
+    spawnFlash( br );
     state.score += 10;
     return; // resolver como maximo un bloque por frame
   }
@@ -222,6 +226,10 @@ function updateParticles( dt ) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
   }
+}
+
+function spawnFlash( br ) {
+  state.flashes.push( { x: br.x, y: br.y, w: br.w, h: br.h, born: now } );
 }
 
 function resetGame() {
@@ -277,6 +285,19 @@ function render() {
     ctx.globalAlpha = clamp( 1 - ( now - pt.born ) / PARTICLE_LIFE, 0, 1 );
     ctx.fillStyle = pt.color;
     ctx.fillRect( pt.x, pt.y, pt.size, pt.size );
+  }
+  ctx.globalAlpha = 1;
+
+  for ( let i = state.flashes.length - 1; i >= 0; i-- ) {
+    const fl = state.flashes[ i ];
+    const age = now - fl.born;
+    if ( age >= FLASH_DURATION ) {
+      state.flashes.splice( i, 1 );
+      continue;
+    }
+    ctx.globalAlpha = 1 - age / FLASH_DURATION;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect( fl.x, fl.y, fl.w, fl.h );
   }
   ctx.globalAlpha = 1;
 
