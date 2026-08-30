@@ -349,6 +349,11 @@ function render() {
     const br = state.bricks[ i ];
     if ( br.alive ) {
       drawSprite( ctx, "block_" + br.color, br.x, br.y, br.w, br.h );
+      if ( br.hp < br.maxHp ) {
+        const crackFrames = EXPLOSION_FRAMES[ br.color ];
+        const idx = clamp( br.maxHp - br.hp - 1, 0, crackFrames.length - 1 );
+        drawFrame( ctx, crackFrames[ idx ], br.x, br.y, br.w, br.h );
+      }
     } else if ( br.breaking ) {
       const elapsed = now - br.breakStart;
       if ( elapsed >= EXPLOSION_DURATION ) {
