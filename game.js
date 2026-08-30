@@ -7,6 +7,7 @@ const BG_COLOR = "#0a0a12";
 const PADDLE = { w: 96, h: 16, y: 560, speed: 480 }; // speed en px/s (solo teclado)
 const BALL = { size: 14, speed: 360 }; // speed en px/s, constante
 const MAX_LAUNCH_ANGLE = 50 * Math.PI / 180; // desde la vertical
+const MAX_BOUNCE_ANGLE = 60 * Math.PI / 180; // rebote en el paddle, desde la vertical
 
 const GRID = {
   cols: 10,
@@ -108,6 +109,20 @@ function updateBall( dt ) {
   }
 }
 
+function collideBallPaddle() {
+  const b = state.ball;
+  const p = state.paddle;
+  if ( b.vy <= 0 ) return;
+  if ( b.x + b.r <= p.x || b.x - b.r >= p.x + p.w ) return;
+  if ( b.y + b.r < p.y || b.y - b.r > p.y + p.h ) return;
+
+  const offset = clamp( ( b.x - ( p.x + p.w / 2 ) ) / ( p.w / 2 ), -1, 1 );
+  const angle = offset * MAX_BOUNCE_ANGLE;
+  b.vx = BALL.speed * Math.sin( angle );
+  b.vy = -BALL.speed * Math.cos( angle );
+  b.y = p.y - b.r;
+}
+
 function collideBallBricks() {
   const b = state.ball;
   const left = b.x - b.r;
@@ -141,7 +156,10 @@ function collideBallBricks() {
 function update( dt ) {
   updatePaddle( dt );
   updateBall( dt );
-  if ( !state.ballStuck ) collideBallBricks();
+  if ( !state.ballStuck ) {
+    collideBallPaddle();
+    collideBallBricks();
+  }
 }
 
 function render() {
