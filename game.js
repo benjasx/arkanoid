@@ -252,6 +252,9 @@ function resetGame() {
   state.score = 0;
   state.ballStuck = true;
   state.bricks = buildBricks();
+  state.particles.length = 0;
+  state.popups.length = 0;
+  state.flashes.length = 0;
   state.paddle.x = ( CANVAS_W - PADDLE.w ) / 2;
   stickBallToPaddle();
 }
