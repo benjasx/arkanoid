@@ -153,14 +153,17 @@ function updateBall( dt ) {
   if ( b.x - b.r < 0 ) {
     b.x = b.r;
     b.vx = -b.vx;
+    playBounceSfx();
   } else if ( b.x + b.r > CANVAS_W ) {
     b.x = CANVAS_W - b.r;
     b.vx = -b.vx;
+    playBounceSfx();
   }
 
   if ( b.y - b.r < 0 ) {
     b.y = b.r;
     b.vy = -b.vy;
+    playBounceSfx();
   }
 
   if ( b.y - b.r > CANVAS_H ) {
