@@ -31,15 +31,24 @@ pase a ser una colección de bolas.
 - `buildBricks( stage )`: el número de filas crece con el stage hasta `MAX_ROWS`; los colores de
   fila se reciclan con módulo sobre `GRID.rowColors` cuando hay más de 5 filas.
 - Bloques de varios golpes: desde `ARMOR_START_STAGE`, cada bloque recibe con probabilidad
-  creciente un `maxHp` aleatorio entre 2 y `ARMOR_MAX_HP`; el resto tiene `maxHp = 1`.
-- Feedback visual de daño: un bloque vivo con `hp < maxHp` se dibuja con su sprite base y encima
-  un frame de `EXPLOSION_FRAMES[ color ]` (índice según daño acumulado) a modo de grieta.
+  creciente un `maxHp` aleatorio entre 2 y `ARMOR_MAX_HP` (= 5); el resto tiene `maxHp = 1`.
+  Cada nivel de dureza tiene su propio sprite de piedra/madera (`ARMOR_SKIN`): `maxHp 2 → wood`,
+  `3 → brick`, `4 → gray`, `5 → slate`. Un bloque normal (`maxHp 1`) usa el sprite de color de su
+  fila. Se añaden `wood`, `brick` y `slate` a `SPRITES.blocks` en `assets/spritesheet.js`
+  (`gray` ya existía); coords en el PNG: `wood` sx32/sy272, `brick` sx64/sy272, `gray` sx32/sy288,
+  `slate` sx64/sy288 (32×16).
+- Feedback visual de daño: un bloque blindado se dibuja siempre con su sprite de piedra/madera
+  (`ARMOR_SKIN[ maxHp ]`); si además está vivo con `hp < maxHp`, encima se pinta un frame de
+  `EXPLOSION_FRAMES[ br.color ]` (color de la fila, índice según daño acumulado) a modo de grieta.
+  Los bloques normales siguen dibujándose solo con su sprite de color.
 - `state.ballSpeed`: la rapidez de la bola pasa a ser `BALL.speed` multiplicado por un factor que
   sube `STAGE_SPEED_STEP` por stage hasta `STAGE_SPEED_CAP`. Se usa en `launchBall()` y
   `collideBallPaddle()` en vez de la constante `BALL.speed`.
 - Golpe a bloque blindado en `collideBallBricks()`: la bola siempre rebota; si tras `hp--` queda
   `hp > 0` el bloque sigue vivo con solo sonido de rotura y destello (sin partículas, sin popup,
-  sin sumar score); si `hp === 0` se ejecuta el tratamiento completo de rotura de SPEC 02.
+  sin sumar score); si `hp === 0` se ejecuta el tratamiento completo de rotura de SPEC 02, pero
+  el score sube `10 * maxHp` (equivale a +10 por cada golpe que necesitó el bloque: 2 golpes →
+  +20 … 5 golpes → +50) y el popup muestra ese total (`"+20"` … `"+50"`) en vez del `"+10"` fijo.
 - Nueva fase `"stageclear"` que sustituye a `"win"`: al no quedar bloques vivos se congela la
   simulación y se dibuja un overlay breve "Nivel N — pulsa una tecla o haz click para
   continuar", reutilizando el patrón de overlay de Game Over. Al pulsar, `stage++`, se
@@ -102,7 +111,8 @@ const STAGE_SPEED_STEP = 0.08; // +8% de rapidez de bola por stage
 const STAGE_SPEED_CAP = 1.6; // multiplicador máximo sobre BALL.speed
 
 const ARMOR_START_STAGE = 2; // primer stage con bloques de varios golpes
-const ARMOR_MAX_HP = 3; // golpes máximos de un bloque blindado
+const ARMOR_MAX_HP = 5; // golpes máximos de un bloque blindado
+const ARMOR_SKIN = { 2: "wood", 3: "brick", 4: "gray", 5: "slate" }; // sprite por nivel de dureza
 // Probabilidad de que un bloque sea blindado en un stage dado:
 //   armorChance( stage ) = Math.min( 0.15 * ( stage - 1 ), 0.6 )
 
@@ -117,14 +127,15 @@ state.phase = "playing"; // 'playing' | 'stageclear' | 'gameover'   (ya no exist
 state.balls = [ball]; // SPEC 01 pasa de state.ball única a este array
 state.bricksDestroyed = 0; // bloques con hp === 0 en toda la partida
 
-// brick (buildBricks): se añaden hp y maxHp
-// { x, y, w, h, color, hp, maxHp, alive: true, breaking: false, breakStart: 0 }
+// brick (buildBricks): se añaden hp, maxHp y skin
+// { x, y, w, h, color, skin, hp, maxHp, alive: true, breaking: false, breakStart: 0 }
+//   skin = ARMOR_SKIN[ maxHp ] si maxHp > 1, si no null (usa el sprite de color)
 ```
 
 Reglas de la multibola:
 
-- En `collideBallBricks()`, solo en el camino `hp === 0` (rotura real) y tras `state.score += 10`:
-  `state.bricksDestroyed++`. Si
+- En `collideBallBricks()`, solo en el camino `hp === 0` (rotura real) y tras
+  `state.score += 10 * br.maxHp`: `state.bricksDestroyed++`. Si
   `Math.floor( ( state.bricksDestroyed - 1 ) / MULTIBALL_EVERY ) !== Math.floor( state.bricksDestroyed / MULTIBALL_EVERY )`
   (el contador acaba de cruzar un múltiplo de 10) → `spawnMultiball()`.
 - `spawnMultiball()`: elige una bola viva de referencia (p. ej. `state.balls[ 0 ]`); crea
@@ -143,8 +154,8 @@ Reglas de `buildBricks( stage )`:
 - `rows = Math.min( START_ROWS + ( stage - 1 ), MAX_ROWS )`, `cols` sigue siendo `GRID.cols`.
 - Color de fila: `GRID.rowColors[ row % GRID.rowColors.length ]`.
 - Para cada bloque: si `stage >= ARMOR_START_STAGE` y `Math.random() < armorChance( stage )`,
-  `maxHp = 2 + Math.floor( Math.random() * ( ARMOR_MAX_HP - 1 ) )` (entero en `[ 2, ARMOR_MAX_HP ]`);
-  en otro caso `maxHp = 1`. `hp = maxHp`.
+  `maxHp = 2 + Math.floor( Math.random() * ( ARMOR_MAX_HP - 1 ) )` (entero en `[ 2, ARMOR_MAX_HP ]`,
+  es decir 2–5); en otro caso `maxHp = 1`. `hp = maxHp`. `skin = maxHp > 1 ? ARMOR_SKIN[ maxHp ] : null`.
 
 Regla de `ballSpeed`:
 
@@ -179,22 +190,27 @@ Convenciones: mismo estilo que `assets/spritesheet.js` (2 espacios, espacios den
    que alcanza `STAGE_SPEED_CAP` la rapidez deja de subir.
 
 3. **Bloques de varios golpes.** En `buildBricks( stage )` asignar `hp` / `maxHp` según
-   `armorChance( stage )` y `ARMOR_MAX_HP`. En `collideBallBricks()`, tras calcular el rebote de
+   `armorChance( stage )` y `ARMOR_MAX_HP` (= 5), y `br.skin = maxHp > 1 ? ARMOR_SKIN[ maxHp ] : null`.
+   Añadir `wood`, `brick` y `slate` a `SPRITES.blocks` en `assets/spritesheet.js` con sus coords
+   (`gray` ya está). En `collideBallBricks()`, tras calcular el rebote de
    la bola (que se aplica siempre), hacer `br.hp--`. Si `br.hp > 0`: el bloque sigue `alive`,
    llamar solo a `playBreakSfx()` y `spawnFlash( br )`, marcar `br.breaking = false` y **no**
    crear partículas ni popup ni sumar `state.score`; `return`. Si `br.hp === 0`: ejecutar el
    camino de rotura actual de SPEC 02 (`alive = false`, `breaking = true`, `breakStart = now`,
-   `playBreakSfx()`, `spawnParticles`, `spawnFlash`, `spawnPopup`, `state.score += 10`);
-   `return`. Verificar: desde el stage 2 hay bloques que requieren 2 o 3 impactos; los golpes
+   `playBreakSfx()`, `spawnParticles`, `spawnFlash`), sumar `state.score += 10 * br.maxHp` y
+   lanzar el popup con ese valor (`spawnPopup( br, 10 * br.maxHp )`, texto `"+" + puntos`);
+   `return`. Verificar: desde el stage 2 hay bloques que requieren entre 2 y 5 impactos; los golpes
    intermedios hacen rebotar la bola y suenan/destellan sin sumar puntos; el golpe final rompe
-   el bloque con el efecto completo de SPEC 02.
+   el bloque con el efecto completo de SPEC 02 y suma 10 por golpe necesitado (bloque de 2 → +20
+   con popup `"+20"` … de 5 → +50 con `"+50"`; bloque normal → +10).
 
-4. **Feedback visual de daño.** En `render()`, para cada brick con `br.alive` y `br.hp < br.maxHp`:
-   dibujar primero `drawSprite( ctx, "block_" + br.color, ... )` y encima
+4. **Feedback visual de daño.** En `render()`, el sprite base de cada brick vivo es
+   `"block_" + ( br.skin || br.color )` (los blindados salen ya con textura de piedra/madera).
+   Además, para cada brick con `br.alive` y `br.hp < br.maxHp`, encima del sprite base dibujar
    `drawFrame( ctx, EXPLOSION_FRAMES[ br.color ][ idx ], br.x, br.y, br.w, br.h )` con
    `idx = clamp( br.maxHp - br.hp - 1, 0, EXPLOSION_FRAMES[ br.color ].length - 1 )`. Los bloques
-   con `hp === maxHp` se dibujan como hasta ahora. Verificar: un bloque golpeado pero no roto se
-   ve agrietado y la grieta avanza con cada golpe hasta que el último lo rompe.
+   con `hp === maxHp` no llevan grieta. Verificar: un blindado sin tocar ya se ve de piedra/madera
+   según su dureza; al golpearlo aparece una grieta que se agrava con cada golpe hasta romperlo.
 
 5. **Habilidad multibola.** Convertir `state.ball` en `state.balls` (array con una bola).
    Adaptar `launchBall()`, `stickBallToPaddle()`, `collideBallWall()`, `collideBallPaddle()`,
@@ -203,7 +219,7 @@ Convenciones: mismo estilo que `assets/spritesheet.js` (2 espacios, espacios den
    array; solo si el array queda vacío se hace `state.lives--` y, si quedan vidas, se recrea una
    sola bola pegada al paddle, si no `"gameover"`. Añadir `state.bricksDestroyed = 0` y las
    constantes `MULTIBALL_EVERY`, `MULTIBALL_ADD`, `MULTIBALL_SPREAD`. En el camino `hp === 0` de
-   `collideBallBricks()` (paso 3), tras `state.score += 10`, hacer `state.bricksDestroyed++` y,
+   `collideBallBricks()` (paso 3), tras `state.score += 10 * br.maxHp`, hacer `state.bricksDestroyed++` y,
    si el contador acaba de cruzar un múltiplo de `MULTIBALL_EVERY`, llamar a `spawnMultiball()`,
    que añade `MULTIBALL_ADD` bolas en la posición de una bola viva, con módulo `state.ballSpeed`
    y direcciones repartidas en abanico (`±MULTIBALL_SPREAD`), lanzadas de inmediato; sin tope de
@@ -238,9 +254,11 @@ Convenciones: mismo estilo que `assets/spritesheet.js` (2 espacios, espacios den
 - [ ] El stage 2 tiene 6 filas de bloques, el stage 3 tiene 7, y así hasta un máximo de `MAX_ROWS` filas.
 - [ ] Las vidas y el score se conservan al pasar de stage; no se regalan vidas.
 - [ ] El HUD muestra `Nivel: N` además de `Vidas:` y `Score:`.
-- [ ] Desde el stage 2 aparecen bloques que requieren 2 o 3 impactos para romperse, repartidos de forma aleatoria.
+- [ ] Desde el stage 2 aparecen bloques que requieren entre 2 y 5 impactos para romperse, repartidos de forma aleatoria.
+- [ ] Cada nivel de dureza usa su sprite de piedra/madera (2 → wood, 3 → brick, 4 → gray, 5 → slate); el bloque normal usa el sprite de color de su fila.
 - [ ] Un impacto que no rompe un bloque blindado hace rebotar la bola, reproduce el sonido de rotura y un destello, y no suma puntos ni crea partículas ni popup.
-- [ ] El impacto que sí rompe el bloque ejecuta el efecto completo de SPEC 02 (animación de 4 frames, partículas, destello, popup "+10", +10 al score).
+- [ ] El impacto que sí rompe el bloque ejecuta el efecto completo de SPEC 02 (animación de 4 frames, partículas, destello, popup y sumar al score).
+- [ ] Romper un bloque suma `10 * maxHp` al score: bloque normal +10 (popup "+10"), y los blindados +20/+30/+40/+50 según necesiten 2/3/4/5 golpes, con el popup mostrando ese valor.
 - [ ] Un bloque blindado dañado pero vivo se dibuja con una grieta (frame de `EXPLOSION_FRAMES`) que se agrava con cada golpe.
 - [ ] La rapidez de la bola aumenta en cada stage y deja de crecer al alcanzar `STAGE_SPEED_CAP`.
 - [ ] Cada vez que el total de bloques realmente destruidos en la partida cruza un múltiplo de 10 (10, 20, 30...) se añaden 4 bolas al stage, lanzadas de inmediato.
@@ -262,9 +280,11 @@ Convenciones: mismo estilo que `assets/spritesheet.js` (2 espacios, espacios den
 - **Sí:** stages infinitos generados por `buildBricks( stage )`. No hay contenido que mantener y encaja con "que la dificultad escale sin fin".
 - **Sí:** escalar por número de filas hasta `MAX_ROWS = 9`. A 28 px por fila la novena termina en ~y=312, deja >240 px hasta el paddle (y=560); más filas comprimirían demasiado el área de juego.
 - **Sí:** cuando las filas llegan al tope, la dificultad sigue subiendo por `armorChance` y por `ballSpeed`. Evita que la progresión se estanque.
-- **Sí:** bloques de 2–3 golpes asignados al azar con probabilidad creciente (`0.15 * (stage-1)`, tope 0.6). "Algunos bloques" y "aleatorios" según lo pedido; el tope evita rejillas enteras blindadas.
-- **Sí:** mostrar el daño con un frame de `EXPLOSION_FRAMES[ color ]` superpuesto. Es un sprite quebrado ya disponible en los assets; no hace falta arte nuevo ni dibujar grietas a mano.
-- **Sí:** golpe no letal = solo sonido + destello, sin score ni partículas ni popup. El popup "+10" y los +10 al score deben corresponder a bloques realmente destruidos.
+- **Sí:** bloques blindados asignados al azar con probabilidad creciente (`0.15 * (stage-1)`, tope 0.6). "Algunos bloques" y "aleatorios" según lo pedido; el tope evita rejillas enteras blindadas.
+- **Sí:** 4 niveles de dureza (`ARMOR_MAX_HP = 5`), uno por sprite de piedra/madera del spritesheet (`2 → wood`, `3 → brick`, `4 → gray`, `5 → slate`). Pedido explícito del usuario ("son cuatro bloques"); cada nivel se distingue de un vistazo y el score `10 * maxHp` ya lo acompaña. `maxHp` uniforme en `[2, 5]`: un `slate` de 5 golpes puede salir ya en el stage 2, pero con `armorChance` baja al principio.
+- **Sí:** mostrar el daño con un frame de `EXPLOSION_FRAMES[ br.color ]` superpuesto al sprite base (color o skin). Es un sprite quebrado ya disponible en los assets; no hace falta arte nuevo ni dibujar grietas a mano.
+- **Sí:** golpe no letal = solo sonido + destello, sin score ni partículas ni popup. El score y el popup solo se disparan al destruir el bloque.
+- **Sí:** al romper un bloque el score sube `10 * maxHp` (equivale a +10 por cada golpe que recibió) y el popup muestra ese total. Recompensa proporcional a la dureza; pedido explícito del usuario (2 golpes → 20 … 5 golpes → 50).
 - **Sí:** rapidez de bola `+8%` por stage con tope `1.6x`. Sube la presión sin volver la bola incontrolable ni provocar tunneling severo.
 - **Sí:** `state.ballSpeed` en `state` en vez de mutar la constante `BALL.speed`. La constante queda como valor base; el reset es trivial.
 - **Sí:** fase `"stageclear"` con overlay breve reutilizando el patrón de Game Over. Da un respiro entre stages sin construir una pantalla nueva.
@@ -272,7 +292,7 @@ Convenciones: mismo estilo que `assets/spritesheet.js` (2 espacios, espacios den
 - **Sí:** cada activación suma 4 bolas a las que haya, sin tope. Pedido explícito ("sumar 4 más"); el reset a una sola bola al cambiar de stage acota el crecimiento por stage.
 - **Sí:** multibola clásica: las bolas extra conviven y solo se pierde vida al caer la última. Comportamiento estándar de Arkanoid y no necesita temporizador.
 - **Sí:** `state.balls` como array sustituye a la bola única de SPEC 01. La multibola lo obliga; "una sola bola" es `balls.length === 1` y el reset es trivial.
-- **Sí:** solo cuentan los bloques con `hp === 0`, igual que el score y el popup "+10". Coherente con la regla de golpe no letal de este mismo spec.
+- **Sí:** solo cuentan los bloques con `hp === 0`, igual que el score y el popup. Coherente con la regla de golpe no letal de este mismo spec.
 - **Sí:** la feature vive en SPEC 04. El usuario la pidió aquí y comparte disparador (`collideBallBricks()`) con el resto del spec.
 - **Sí:** sustituir `"win"` en vez de conservarla. Con progresión infinita no hay estado de victoria; mantener ambos sería código muerto y contradictorio con SPEC 01.
 - **No:** versión temporal de la multibola (5 bolas durante X segundos). Descartado en la aclaración a favor de la multibola clásica.
@@ -293,6 +313,7 @@ Convenciones: mismo estilo que `assets/spritesheet.js` (2 espacios, espacios den
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Con la bola más rápida en stages altos puede atravesar un bloque o pared (tunneling)             | `STAGE_SPEED_CAP = 1.6` mantiene el paso por frame acotado; si aparece, subdividir el desplazamiento del frame (mismo riesgo ya anotado en SPEC 01).                            |
 | Un bloque blindado en la fila inferior con la bola lenta genera rebotes largos y aburridos       | `armorChance` capado a 0.6 y `ballSpeed` creciente reducen la situación; ningún bloque es indestructible.                                                                       |
+| Con `ARMOR_MAX_HP = 5` un bloque `slate` de 5 golpes puede salir ya en el stage 2 y hacerse pesado | `armorChance` arranca en 0.15 y `maxHp` es uniforme en `[2,5]`, así que los de 5 golpes son minoría al principio; si molesta, ponderar `maxHp` por stage en otro spec.        |
 | Quitar la fase `"win"` deja referencias colgando (`state.phase === "win"` en `render()`)         | Paso 1 obliga a sustituir todos los usos; el criterio de aceptación comprueba que no hay estado de victoria.                                                                    |
 | El frame de `EXPLOSION_FRAMES` como grieta puede tapar demasiado el color del bloque             | Usar el índice más bajo para el primer daño (`idx = maxHp - hp - 1`); si molesta, dibujarlo con `globalAlpha < 1`.                                                              |
 | Muchas filas + muchos bloques blindados podrían bajar los FPS por el doble `draw` por brick      | El doble dibujo solo ocurre en bloques dañados (`hp < maxHp`), que son minoría; `MAX_ROWS` acota el total.                                                                      |

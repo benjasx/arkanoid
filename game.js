@@ -19,7 +19,8 @@ const START_ROWS = 5; // filas en el stage 1 (igual que SPEC 01)
 const MAX_ROWS = 9; // tope de filas; por encima solo escala el blindaje
 
 const ARMOR_START_STAGE = 2; // primer stage con bloques de varios golpes
-const ARMOR_MAX_HP = 3; // golpes maximos de un bloque blindado
+const ARMOR_MAX_HP = 5; // golpes maximos de un bloque blindado
+const ARMOR_SKIN = { 2: "wood", 3: "brick", 4: "gray", 5: "slate" }; // sprite por nivel de dureza
 
 const GRID = {
   cols: 10,
@@ -31,7 +32,7 @@ const GRID = {
   rowColors: [ "red", "hotpink", "magenta", "cyan", "yellow" ], // color por fila (indice 0 = fila superior)
 };
 const BRICK_H = 24; // alto de bloque (el spec no lo fija; el sprite es 32x16)
-const START_LIVES = 3;
+const START_LIVES = 5;
 
 const BREAK_SFX_SRC = "assets/sounds/break-sound.mp3";
 const BREAK_SFX_POOL_SIZE = 8;
@@ -73,7 +74,8 @@ function buildBricks( stage ) {
       if ( stage >= ARMOR_START_STAGE && Math.random() < armorChance( stage ) ) {
         maxHp = 2 + Math.floor( Math.random() * ( ARMOR_MAX_HP - 1 ) );
       }
-      bricks.push( { x, y, w: bw, h: BRICK_H, color, hp: maxHp, maxHp, alive: true, breaking: false, breakStart: 0 } );
+      const skin = maxHp > 1 ? ARMOR_SKIN[ maxHp ] : null;
+      bricks.push( { x, y, w: bw, h: BRICK_H, color, skin, hp: maxHp, maxHp, alive: true, breaking: false, breakStart: 0 } );
     }
   }
   return bricks;
@@ -289,8 +291,9 @@ function collideBallBricks( b ) {
     playBreakSfx();
     spawnParticles( br );
     spawnFlash( br );
-    spawnPopup( br );
-    state.score += 10;
+    const points = 10 * br.maxHp;
+    spawnPopup( br, points );
+    state.score += points;
     state.bricksDestroyed++;
     if ( Math.floor( ( state.bricksDestroyed - 1 ) / MULTIBALL_EVERY ) !== Math.floor( state.bricksDestroyed / MULTIBALL_EVERY ) ) {
       spawnMultiball( b );
@@ -333,8 +336,8 @@ function spawnFlash( br ) {
   state.flashes.push( { x: br.x, y: br.y, w: br.w, h: br.h, born: now } );
 }
 
-function spawnPopup( br ) {
-  state.popups.push( { x: br.x + br.w / 2, y: br.y + br.h / 2, text: "+10", born: now } );
+function spawnPopup( br, points ) {
+  state.popups.push( { x: br.x + br.w / 2, y: br.y + br.h / 2, text: "+" + points, born: now } );
 }
 
 function updatePopups( dt ) {
@@ -398,7 +401,7 @@ function render() {
   for ( let i = 0; i < state.bricks.length; i++ ) {
     const br = state.bricks[ i ];
     if ( br.alive ) {
-      drawSprite( ctx, "block_" + br.color, br.x, br.y, br.w, br.h );
+      drawSprite( ctx, "block_" + ( br.skin || br.color ), br.x, br.y, br.w, br.h );
       if ( br.hp < br.maxHp ) {
         const crackFrames = EXPLOSION_FRAMES[ br.color ];
         const idx = clamp( br.maxHp - br.hp - 1, 0, crackFrames.length - 1 );

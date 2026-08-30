@@ -46,7 +46,8 @@ El repo no es ahora mismo un repositorio git; el paso de rama de `/spec-impl` as
   vez y luego usa `drawSprite(ctx, name, x, y, w, h)` y `drawFrame(ctx, frame, x, y, w, h)`.
   Dibuja el PNG de origen en un canvas offscreen antes de usarlo. Nombres de sprites: `paddle`,
   `ball` y `block_<color>` donde color es uno de
-  `gray red yellow cyan magenta hotpink green`. `EXPLOSION_FRAMES[color]` contiene animaciones
+  `gray red yellow cyan magenta hotpink green` más las texturas de bloque blindado de SPEC 04
+  `wood brick slate`. `EXPLOSION_FRAMES[color]` contiene animaciones
   de rotura de 4 frames; `EXPLOSION_DURATION` son 150 ms.
 - `assets/spritesheet-breakout.png` — spritesheet de origen (coordenadas hardcodeadas en
   `spritesheet.js`).
