@@ -9,6 +9,9 @@ const BALL = { size: 14, speed: 360 }; // speed en px/s, constante
 const MAX_LAUNCH_ANGLE = 50 * Math.PI / 180; // desde la vertical
 const MAX_BOUNCE_ANGLE = 60 * Math.PI / 180; // rebote en el paddle, desde la vertical
 
+const START_ROWS = 5; // filas en el stage 1 (igual que SPEC 01)
+const MAX_ROWS = 9; // tope de filas; por encima solo escala el blindaje
+
 const GRID = {
   cols: 10,
   rows: 5,
@@ -44,11 +47,12 @@ const POPUP_RISE = 28; // px que sube en toda su vida
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
 
-function buildBricks() {
+function buildBricks( stage ) {
   const bw = ( CANVAS_W - 2 * GRID.marginX - ( GRID.cols - 1 ) * GRID.gapX ) / GRID.cols;
+  const rows = Math.min( START_ROWS + ( stage - 1 ), MAX_ROWS );
   const bricks = [];
-  for ( let row = 0; row < GRID.rows; row++ ) {
-    const color = GRID.rowColors[ row ];
+  for ( let row = 0; row < rows; row++ ) {
+    const color = GRID.rowColors[ row % GRID.rowColors.length ];
     const y = GRID.top + row * ( BRICK_H + GRID.gapY );
     for ( let col = 0; col < GRID.cols; col++ ) {
       const x = GRID.marginX + col * ( bw + GRID.gapX );
@@ -59,13 +63,14 @@ function buildBricks() {
 }
 
 const state = {
-  phase: "playing", // 'playing' | 'gameover' | 'win'
+  phase: "playing", // 'playing' | 'gameover' | 'stageclear'
+  stage: 1,
   lives: START_LIVES,
   score: 0,
   ballStuck: true,
   paddle: { x: ( CANVAS_W - PADDLE.w ) / 2, y: PADDLE.y, w: PADDLE.w, h: PADDLE.h },
   ball: { x: 0, y: 0, vx: 0, vy: 0, r: BALL.size / 2 },
-  bricks: buildBricks(),
+  bricks: buildBricks( 1 ),
   input: { left: false, right: false, mouseX: null },
   particles: [], // { x, y, vx, vy, size, color, born }
   flashes: [], // { x, y, w, h, born }
@@ -267,12 +272,21 @@ function updatePopups( dt ) {
   }
 }
 
+function advanceStage() {
+  state.stage++;
+  state.bricks = buildBricks( state.stage );
+  state.ballStuck = true;
+  state.phase = "playing";
+  stickBallToPaddle();
+}
+
 function resetGame() {
   state.phase = "playing";
+  state.stage = 1;
   state.lives = START_LIVES;
   state.score = 0;
   state.ballStuck = true;
-  state.bricks = buildBricks();
+  state.bricks = buildBricks( state.stage );
   state.particles.length = 0;
   state.popups.length = 0;
   state.flashes.length = 0;
@@ -295,7 +309,7 @@ function update( dt ) {
   if ( state.lives <= 0 ) {
     state.phase = "gameover";
   } else if ( !state.bricks.some( br => br.alive ) ) {
-    state.phase = "win";
+    state.phase = "stageclear";
   }
 }
 
@@ -372,6 +386,9 @@ function render() {
     drawSprite( ctx, "ball", lifeIconX + i * ( lifeIcon + lifeGap ), 12, lifeIcon, lifeIcon );
   }
 
+  ctx.textAlign = "center";
+  ctx.fillText( "Nivel: " + state.stage, CANVAS_W / 2, 12 );
+
   ctx.textAlign = "right";
   ctx.fillText( "Score: " + state.score, CANVAS_W - 12, 12 );
 
@@ -383,9 +400,15 @@ function render() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = "48px monospace";
-    ctx.fillText( state.phase === "win" ? "Victoria" : "Game Over", CANVAS_W / 2, CANVAS_H / 2 - 20 );
-    ctx.font = "20px monospace";
-    ctx.fillText( "Pulsa una tecla o haz click para reiniciar", CANVAS_W / 2, CANVAS_H / 2 + 30 );
+    if ( state.phase === "stageclear" ) {
+      ctx.fillText( "Nivel " + ( state.stage + 1 ), CANVAS_W / 2, CANVAS_H / 2 - 20 );
+      ctx.font = "20px monospace";
+      ctx.fillText( "Pulsa una tecla o haz click para continuar", CANVAS_W / 2, CANVAS_H / 2 + 30 );
+    } else {
+      ctx.fillText( "Game Over", CANVAS_W / 2, CANVAS_H / 2 - 20 );
+      ctx.font = "20px monospace";
+      ctx.fillText( "Pulsa una tecla o haz click para reiniciar", CANVAS_W / 2, CANVAS_H / 2 + 30 );
+    }
   }
 }
 
@@ -407,6 +430,10 @@ canvas.addEventListener( "mousemove", ( e ) => {
 } );
 
 canvas.addEventListener( "click", () => {
+  if ( state.phase === "stageclear" ) {
+    advanceStage();
+    return;
+  }
   if ( state.phase !== "playing" ) {
     resetGame();
     return;
@@ -415,6 +442,11 @@ canvas.addEventListener( "click", () => {
 } );
 
 window.addEventListener( "keydown", ( e ) => {
+  if ( state.phase === "stageclear" ) {
+    e.preventDefault();
+    advanceStage();
+    return;
+  }
   if ( state.phase !== "playing" ) {
     e.preventDefault();
     resetGame();
