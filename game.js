@@ -108,9 +108,40 @@ function updateBall( dt ) {
   }
 }
 
+function collideBallBricks() {
+  const b = state.ball;
+  const left = b.x - b.r;
+  const right = b.x + b.r;
+  const top = b.y - b.r;
+  const bottom = b.y + b.r;
+
+  for ( let i = 0; i < state.bricks.length; i++ ) {
+    const br = state.bricks[ i ];
+    if ( !br.alive ) continue;
+    if ( right <= br.x || left >= br.x + br.w || bottom <= br.y || top >= br.y + br.h ) continue;
+
+    const overlapX = Math.min( right - br.x, br.x + br.w - left );
+    const overlapY = Math.min( bottom - br.y, br.y + br.h - top );
+
+    if ( overlapX < overlapY ) {
+      b.x += ( b.x < br.x + br.w / 2 ) ? -overlapX : overlapX;
+      b.vx = -b.vx;
+    } else {
+      b.y += ( b.y < br.y + br.h / 2 ) ? -overlapY : overlapY;
+      b.vy = -b.vy;
+    }
+
+    br.alive = false;
+    br.breaking = true;
+    br.breakStart = now;
+    return; // resolver como maximo un bloque por frame
+  }
+}
+
 function update( dt ) {
   updatePaddle( dt );
   updateBall( dt );
+  if ( !state.ballStuck ) collideBallBricks();
 }
 
 function render() {
@@ -119,8 +150,18 @@ function render() {
 
   for ( let i = 0; i < state.bricks.length; i++ ) {
     const br = state.bricks[ i ];
-    if ( !br.alive ) continue;
-    drawSprite( ctx, "block_" + br.color, br.x, br.y, br.w, br.h );
+    if ( br.alive ) {
+      drawSprite( ctx, "block_" + br.color, br.x, br.y, br.w, br.h );
+    } else if ( br.breaking ) {
+      const elapsed = now - br.breakStart;
+      if ( elapsed >= EXPLOSION_DURATION ) {
+        br.breaking = false;
+      } else {
+        const frames = EXPLOSION_FRAMES[ br.color ];
+        const idx = clamp( Math.floor( elapsed / EXPLOSION_DURATION * frames.length ), 0, frames.length - 1 );
+        drawFrame( ctx, frames[ idx ], br.x, br.y, br.w, br.h );
+      }
+    }
   }
 
   const p = state.paddle;
@@ -131,10 +172,12 @@ function render() {
 }
 
 let lastTime = 0;
+let now = 0;
 
-function frame( now ) {
-  const dt = Math.min( ( now - lastTime ) / 1000, 0.05 );
-  lastTime = now;
+function frame( ts ) {
+  now = ts;
+  const dt = Math.min( ( ts - lastTime ) / 1000, 0.05 );
+  lastTime = ts;
   update( dt );
   render();
   requestAnimationFrame( frame );
