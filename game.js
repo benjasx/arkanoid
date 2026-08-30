@@ -14,6 +14,9 @@ const MAX_BOUNCE_ANGLE = 60 * Math.PI / 180; // rebote en el paddle, desde la ve
 const START_ROWS = 5; // filas en el stage 1 (igual que SPEC 01)
 const MAX_ROWS = 9; // tope de filas; por encima solo escala el blindaje
 
+const ARMOR_START_STAGE = 2; // primer stage con bloques de varios golpes
+const ARMOR_MAX_HP = 3; // golpes maximos de un bloque blindado
+
 const GRID = {
   cols: 10,
   rows: 5,
@@ -49,6 +52,10 @@ const POPUP_RISE = 28; // px que sube en toda su vida
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
 
+function armorChance( stage ) {
+  return Math.min( 0.15 * ( stage - 1 ), 0.6 );
+}
+
 function buildBricks( stage ) {
   const bw = ( CANVAS_W - 2 * GRID.marginX - ( GRID.cols - 1 ) * GRID.gapX ) / GRID.cols;
   const rows = Math.min( START_ROWS + ( stage - 1 ), MAX_ROWS );
@@ -58,7 +65,11 @@ function buildBricks( stage ) {
     const y = GRID.top + row * ( BRICK_H + GRID.gapY );
     for ( let col = 0; col < GRID.cols; col++ ) {
       const x = GRID.marginX + col * ( bw + GRID.gapX );
-      bricks.push( { x, y, w: bw, h: BRICK_H, color, alive: true, breaking: false, breakStart: 0 } );
+      let maxHp = 1;
+      if ( stage >= ARMOR_START_STAGE && Math.random() < armorChance( stage ) ) {
+        maxHp = 2 + Math.floor( Math.random() * ( ARMOR_MAX_HP - 1 ) );
+      }
+      bricks.push( { x, y, w: bw, h: BRICK_H, color, hp: maxHp, maxHp, alive: true, breaking: false, breakStart: 0 } );
     }
   }
   return bricks;
@@ -221,6 +232,14 @@ function collideBallBricks() {
     } else {
       b.y += ( b.y < br.y + br.h / 2 ) ? -overlapY : overlapY;
       b.vy = -b.vy;
+    }
+
+    br.hp--;
+    if ( br.hp > 0 ) {
+      br.breaking = false;
+      playBreakSfx();
+      spawnFlash( br );
+      return; // golpe no letal: solo sonido + destello
     }
 
     br.alive = false;
