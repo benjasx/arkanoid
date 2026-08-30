@@ -6,17 +6,26 @@ const BG_COLOR = "#0a0a12";
 
 const PADDLE = { w: 96, h: 16, y: 560, speed: 480 }; // speed en px/s (solo teclado)
 const BALL = { size: 14, speed: 360 }; // speed en px/s, valor base
-const STAGE_SPEED_STEP = 0.08; // +8% de rapidez de bola por stage
-const STAGE_SPEED_CAP = 1.6; // multiplicador maximo sobre BALL.speed
+const STAGE_SPEED_STEP = 0.05; // +5% de rapidez de bola por stage
+const STAGE_SPEED_CAP = 1.75; // multiplicador maximo sobre BALL.speed
 
-const MULTIBALL_EVERY = 30; // bloques realmente rotos entre activaciones de multibola
+const MULTIBALL_EVERY = 30; // bloques realmente rotos entre hitos de bloque
 const MULTIBALL_ADD = 4; // bolas que se anaden en cada activacion
 const MULTIBALL_SPREAD = 0.5; // rad de abanico al repartir la direccion de las bolas nuevas
 const MAX_LAUNCH_ANGLE = 50 * Math.PI / 180; // desde la vertical
 const MAX_BOUNCE_ANGLE = 60 * Math.PI / 180; // rebote en el paddle, desde la vertical
 
+const BUFF_DURATION = 10000; // ms que dura el buff de velocidad
+const BUFF_SLOW = 0.7; // multiplicador de velocidad del buff lento
+const BUFF_FAST = 1.35; // multiplicador de velocidad del buff rapido
+const LIFE_EVERY = 1000; // puntos acumulados entre vidas extra
+const MAX_LIVES = 10; // tope duro de vidas
+
 const START_ROWS = 5; // filas en el stage 1 (igual que SPEC 01)
 const MAX_ROWS = 9; // tope de filas; por encima solo escala el blindaje
+const FILL_STEP = 0.05; // +5% de relleno fuera de patron por stage
+const FILL_CAP = 0.4; // tope de relleno procedural
+const MIN_BRICKS = 14; // salvaguarda: por debajo de esto el stage usa el patron "full"
 
 const ARMOR_START_STAGE = 2; // primer stage con bloques de varios golpes
 const ARMOR_MAX_HP = 5; // golpes maximos de un bloque blindado
@@ -57,26 +66,56 @@ const POPUP_RISE = 28; // px que sube en toda su vida
 const canvas = document.getElementById( "game" );
 const ctx = canvas.getContext( "2d" );
 
+const PATTERNS = [
+  { name: "full",    cell: () => true },
+  { name: "pyramid", cell: ( r, rows, c, cols ) => Math.abs( c - ( cols - 1 ) / 2 ) <= ( cols - 1 ) / 2 * ( r + 1 ) / rows },
+  { name: "checker", cell: ( r, rows, c ) => ( r + c ) % 2 === 0 },
+  { name: "diamond", cell: ( r, rows, c, cols ) => Math.abs( c - ( cols - 1 ) / 2 ) + Math.abs( r - ( rows - 1 ) / 2 ) <= Math.max( rows, cols ) / 2 },
+  { name: "columns", cell: ( r, rows, c ) => c % 3 !== 1 },
+  { name: "frame",   cell: ( r, rows, c, cols ) => r === 0 || r === rows - 1 || c === 0 || c === cols - 1 },
+  { name: "zigzag",  cell: ( r, rows, c ) => ( r + c ) % 4 < 2 },
+  { name: "funnel",  cell: ( r, rows, c, cols ) => Math.abs( c - ( cols - 1 ) / 2 ) >= ( cols - 1 ) / 2 * r / rows },
+];
+
 function armorChance( stage ) {
-  return Math.min( 0.15 * ( stage - 1 ), 0.6 );
+  return Math.min( 0.08 * ( stage - 1 ), 0.75 );
 }
 
-function buildBricks( stage ) {
-  const bw = ( CANVAS_W - 2 * GRID.marginX - ( GRID.cols - 1 ) * GRID.gapX ) / GRID.cols;
-  const rows = Math.min( START_ROWS + ( stage - 1 ), MAX_ROWS );
+function fillChance( stage ) {
+  return Math.min( FILL_STEP * ( stage - 1 ), FILL_CAP );
+}
+
+function maxArmorHp( stage ) {
+  return clamp( 2 + Math.floor( ( stage - 1 ) / 3 ), 2, ARMOR_MAX_HP );
+}
+
+function layoutBricks( stage, rows, bw, pattern ) {
   const bricks = [];
   for ( let row = 0; row < rows; row++ ) {
     const color = GRID.rowColors[ row % GRID.rowColors.length ];
     const y = GRID.top + row * ( BRICK_H + GRID.gapY );
     for ( let col = 0; col < GRID.cols; col++ ) {
+      const inPattern = pattern.cell( row, rows, col, GRID.cols );
+      if ( !inPattern && Math.random() >= fillChance( stage ) ) continue;
       const x = GRID.marginX + col * ( bw + GRID.gapX );
       let maxHp = 1;
       if ( stage >= ARMOR_START_STAGE && Math.random() < armorChance( stage ) ) {
-        maxHp = 2 + Math.floor( Math.random() * ( ARMOR_MAX_HP - 1 ) );
+        maxHp = 2 + Math.floor( Math.random() * ( maxArmorHp( stage ) - 1 ) );
       }
       const skin = maxHp > 1 ? ARMOR_SKIN[ maxHp ] : null;
       bricks.push( { x, y, w: bw, h: BRICK_H, color, skin, hp: maxHp, maxHp, alive: true, breaking: false, breakStart: 0 } );
     }
+  }
+  return bricks;
+}
+
+function buildBricks( stage ) {
+  const bw = ( CANVAS_W - 2 * GRID.marginX - ( GRID.cols - 1 ) * GRID.gapX ) / GRID.cols;
+  const rows = Math.min( START_ROWS + Math.floor( stage / 2 ), MAX_ROWS );
+  const pattern = PATTERNS[ ( stage - 1 ) % PATTERNS.length ];
+  let bricks = layoutBricks( stage, rows, bw, pattern );
+  if ( bricks.length < MIN_BRICKS ) {
+    bricks = layoutBricks( stage, rows, bw, PATTERNS[ 0 ] );
   }
   return bricks;
 }
@@ -88,17 +127,19 @@ function makeBall() {
 const state = {
   phase: "playing", // 'playing' | 'gameover' | 'stageclear'
   stage: 1,
-  ballSpeed: BALL.speed, // rapidez efectiva actual de la bola
+  stageSpeed: BALL.speed, // rapidez base de la bola en el stage actual (sin buff)
+  buff: null, // { kind: 'slow' | 'fast', mult, until } o null
   lives: START_LIVES,
   score: 0,
   bricksDestroyed: 0, // bloques con hp === 0 en toda la partida
+  blockMilestones: 0, // hitos de MULTIBALL_EVERY bloques cruzados (alterna multibola / buff)
   paddle: { x: ( CANVAS_W - PADDLE.w ) / 2, y: PADDLE.y, w: PADDLE.w, h: PADDLE.h },
   balls: [ makeBall() ], // SPEC 01 pasa de state.ball unica a este array
   bricks: buildBricks( 1 ),
   input: { left: false, right: false, mouseX: null },
   particles: [], // { x, y, vx, vy, size, color, born }
   flashes: [], // { x, y, w, h, born }
-  popups: [], // { x, y, text, born }
+  popups: [], // { x, y, text, born, life?, size? }
 };
 
 // Pool de audio de rotura (fuera de state, no se resetea)
@@ -165,14 +206,42 @@ function stageBallSpeed() {
   return BALL.speed * Math.min( 1 + STAGE_SPEED_STEP * ( state.stage - 1 ), STAGE_SPEED_CAP );
 }
 
+function effectiveSpeed() {
+  return state.stageSpeed * ( state.buff ? state.buff.mult : 1 );
+}
+
+function rescaleBalls() {
+  const target = effectiveSpeed();
+  for ( let i = 0; i < state.balls.length; i++ ) {
+    const b = state.balls[ i ];
+    if ( b.stuck ) continue;
+    const mag = Math.hypot( b.vx, b.vy );
+    if ( mag === 0 ) continue;
+    b.vx = b.vx / mag * target;
+    b.vy = b.vy / mag * target;
+  }
+}
+
+function activateBuff() {
+  const slow = Math.random() < 0.5;
+  state.buff = {
+    kind: slow ? "slow" : "fast",
+    mult: slow ? BUFF_SLOW : BUFF_FAST,
+    until: now + BUFF_DURATION,
+  };
+  rescaleBalls();
+  spawnNotice( slow ? "SLOW BALL" : "FAST BALL" );
+}
+
 function launchBall() {
+  const speed = effectiveSpeed();
   for ( let i = 0; i < state.balls.length; i++ ) {
     const b = state.balls[ i ];
     if ( !b.stuck ) continue;
     b.stuck = false;
     const angle = ( Math.random() * 2 - 1 ) * MAX_LAUNCH_ANGLE;
-    b.vx = state.ballSpeed * Math.sin( angle );
-    b.vy = -state.ballSpeed * Math.cos( angle );
+    b.vx = speed * Math.sin( angle );
+    b.vy = -speed * Math.cos( angle );
   }
 }
 
@@ -195,7 +264,8 @@ function collideBallWall( b ) {
 }
 
 function updateBalls( dt ) {
-  for ( let i = 0; i < state.balls.length; i++ ) {
+  const count = state.balls.length; // bolas de multibola nacen dentro del bucle; se mueven el frame siguiente
+  for ( let i = 0; i < count; i++ ) {
     const b = state.balls[ i ];
 
     if ( b.stuck ) {
@@ -203,9 +273,16 @@ function updateBalls( dt ) {
       continue;
     }
 
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
-    collideBallWall( b );
+    const dist = Math.hypot( b.vx, b.vy ) * dt;
+    const steps = Math.max( 1, Math.ceil( dist / b.r ) );
+    const sdt = dt / steps;
+    for ( let s = 0; s < steps; s++ ) {
+      b.x += b.vx * sdt;
+      b.y += b.vy * sdt;
+      collideBallWall( b );
+      collideBallPaddle( b );
+      collideBallBricks( b );
+    }
   }
 }
 
@@ -226,6 +303,7 @@ function loseBallsOffscreen() {
 
 function spawnMultiball( ref ) {
   if ( !ref ) return;
+  const speed = effectiveSpeed();
   const baseAngle = Math.atan2( ref.vy, ref.vx );
   for ( let i = 0; i < MULTIBALL_ADD; i++ ) {
     const t = MULTIBALL_ADD === 1 ? 0 : ( i / ( MULTIBALL_ADD - 1 ) ) * 2 - 1; // [ -1, 1 ]
@@ -233,8 +311,8 @@ function spawnMultiball( ref ) {
     state.balls.push( {
       x: ref.x,
       y: ref.y,
-      vx: state.ballSpeed * Math.cos( angle ),
-      vy: state.ballSpeed * Math.sin( angle ),
+      vx: speed * Math.cos( angle ),
+      vy: speed * Math.sin( angle ),
       r: BALL.size / 2,
       stuck: false,
     } );
@@ -249,8 +327,9 @@ function collideBallPaddle( b ) {
 
   const offset = clamp( ( b.x - ( p.x + p.w / 2 ) ) / ( p.w / 2 ), -1, 1 );
   const angle = offset * MAX_BOUNCE_ANGLE;
-  b.vx = state.ballSpeed * Math.sin( angle );
-  b.vy = -state.ballSpeed * Math.cos( angle );
+  const speed = effectiveSpeed();
+  b.vx = speed * Math.sin( angle );
+  b.vy = -speed * Math.cos( angle );
   b.y = p.y - b.r;
   playBounceSfx();
 }
@@ -293,11 +372,29 @@ function collideBallBricks( b ) {
     spawnFlash( br );
     const points = 10 * br.maxHp;
     spawnPopup( br, points );
+    const scoreBefore = state.score;
     state.score += points;
     state.bricksDestroyed++;
+
     if ( Math.floor( ( state.bricksDestroyed - 1 ) / MULTIBALL_EVERY ) !== Math.floor( state.bricksDestroyed / MULTIBALL_EVERY ) ) {
-      spawnMultiball( b );
+      state.blockMilestones++;
+      if ( state.blockMilestones % 2 === 1 ) {
+        spawnMultiball( b );
+        spawnNotice( "MULTIBALL!" );
+      } else {
+        activateBuff();
+      }
     }
+
+    if ( Math.floor( scoreBefore / LIFE_EVERY ) !== Math.floor( state.score / LIFE_EVERY ) ) {
+      if ( state.lives < MAX_LIVES ) {
+        state.lives++;
+        spawnNotice( "+1 VIDA" );
+      } else {
+        spawnNotice( "VIDAS AL MAXIMO" );
+      }
+    }
+
     return; // resolver como maximo un bloque por frame
   }
 }
@@ -340,16 +437,22 @@ function spawnPopup( br, points ) {
   state.popups.push( { x: br.x + br.w / 2, y: br.y + br.h / 2, text: "+" + points, born: now } );
 }
 
+function spawnNotice( text ) {
+  state.popups.push( { x: CANVAS_W / 2, y: CANVAS_H / 2 - 80, text, born: now, life: 1000, size: 34 } );
+}
+
 function updatePopups( dt ) {
   for ( let i = state.popups.length - 1; i >= 0; i-- ) {
-    if ( now - state.popups[ i ].born >= POPUP_LIFE ) state.popups.splice( i, 1 );
+    const life = state.popups[ i ].life || POPUP_LIFE;
+    if ( now - state.popups[ i ].born >= life ) state.popups.splice( i, 1 );
   }
 }
 
 function advanceStage() {
   state.stage++;
   state.bricks = buildBricks( state.stage );
-  state.ballSpeed = stageBallSpeed();
+  state.stageSpeed = stageBallSpeed();
+  state.buff = null;
   state.balls = [ makeBall() ];
   state.phase = "playing";
   stickBallToPaddle( state.balls[ 0 ] );
@@ -358,10 +461,12 @@ function advanceStage() {
 function resetGame() {
   state.phase = "playing";
   state.stage = 1;
-  state.ballSpeed = BALL.speed;
+  state.stageSpeed = BALL.speed;
+  state.buff = null;
   state.lives = START_LIVES;
   state.score = 0;
   state.bricksDestroyed = 0;
+  state.blockMilestones = 0;
   state.balls = [ makeBall() ];
   state.bricks = buildBricks( state.stage );
   state.particles.length = 0;
@@ -374,15 +479,13 @@ function resetGame() {
 function update( dt ) {
   if ( state.phase !== "playing" ) return;
 
+  if ( state.buff && now >= state.buff.until ) {
+    state.buff = null;
+    rescaleBalls();
+  }
+
   updatePaddle( dt );
   updateBalls( dt );
-  const n = state.balls.length;
-  for ( let i = 0; i < n; i++ ) {
-    const b = state.balls[ i ];
-    if ( b.stuck ) continue;
-    collideBallPaddle( b );
-    collideBallBricks( b );
-  }
   loseBallsOffscreen();
   updateParticles( dt );
   updatePopups( dt );
@@ -441,14 +544,15 @@ function render() {
   ctx.globalAlpha = 1;
 
   ctx.fillStyle = "#fff";
-  ctx.font = "18px monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for ( let i = 0; i < state.popups.length; i++ ) {
     const pop = state.popups[ i ];
+    const life = pop.life || POPUP_LIFE;
     const age = now - pop.born;
-    ctx.globalAlpha = 1 - age / POPUP_LIFE;
-    ctx.fillText( pop.text, pop.x, pop.y - POPUP_RISE * ( age / POPUP_LIFE ) );
+    ctx.font = ( pop.size || 18 ) + "px monospace";
+    ctx.globalAlpha = 1 - age / life;
+    ctx.fillText( pop.text, pop.x, pop.y - POPUP_RISE * ( age / life ) );
   }
   ctx.globalAlpha = 1;
 
@@ -479,6 +583,26 @@ function render() {
 
   ctx.textAlign = "right";
   ctx.fillText( "Score: " + state.score, CANVAS_W - 12, 12 );
+
+  if ( state.buff ) {
+    const remain = clamp( ( state.buff.until - now ) / BUFF_DURATION, 0, 1 );
+    const label = state.buff.kind === "slow" ? "SLOW BALL" : "FAST BALL";
+    const col = state.buff.kind === "slow" ? "#44aadd" : "#ee5555";
+    const chipX = 12;
+    const chipY = 40;
+    const barX = chipX + 84;
+    const barW = 80;
+    const barH = 12;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.font = "13px monospace";
+    ctx.fillStyle = col;
+    ctx.fillText( label, chipX, chipY + barH / 2 );
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1;
+    ctx.strokeRect( barX, chipY, barW, barH );
+    ctx.fillRect( barX, chipY, barW * remain, barH );
+  }
 
   if ( state.phase !== "playing" ) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";

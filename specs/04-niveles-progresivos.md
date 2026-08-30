@@ -5,6 +5,15 @@
 > **Fecha:** 2026-08-30
 > **Objetivo:** Sustituir la pantalla de Victoria de SPEC 01 por una progresión infinita de stages en la que, al limpiar cada rejilla, la siguiente tiene más filas de bloques, más bloques que aguantan varios golpes y la bola algo más rápida. Además, cada 10 bloques destruidos en toda la partida se activa una multibola que suma 4 bolas al stage.
 
+> **Modificado por SPEC 05:** la rejilla rectangular por fórmula pasa a un catálogo de patrones
+> de forma (`PATTERNS`) más relleno procedural; las tres curvas de dificultad se recalibran
+> (filas `START_ROWS + floor(stage/2)`, `armorChance` `0.08*(stage-1)` tope `0.75`,
+> `STAGE_SPEED_STEP` `0.05` / `STAGE_SPEED_CAP` `1.75`); el HP del blindaje se escalona por stage
+> (`maxArmorHp`); la multibola incondicional cada 30 bloques pasa a alternar multibola / buff de
+> velocidad; `state.ballSpeed` se renombra a `state.stageSpeed` y la rapidez efectiva sale de
+> `effectiveSpeed()`; los bullets de "Fuera" que descartaban otras habilidades y las vidas extra
+> quedan levantados (SPEC 05 añade el buff de velocidad y +1 vida cada 1.000 puntos con tope 10).
+
 ---
 
 ## Por qué este spec
